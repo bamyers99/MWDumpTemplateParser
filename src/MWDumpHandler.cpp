@@ -6,15 +6,12 @@
  */
 
 #include "MWDumpHandler.h"
-#include <xercesc/util/XMLString.hpp>
-
-using namespace xercesc;
 
 namespace phppreg {
 
-void MWDumpHandler::startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const xercesc::Attributes& attrs)
+void MWDumpHandler::startElement(void *userData, const char *el, const char **attr)
 {
-	element = XMLString::transcode(localname);
+	element = el;
 
 	if (element == "page") {
 		if (container.length() == 0) container = "page";
@@ -25,61 +22,38 @@ void MWDumpHandler::startElement(const XMLCh* const uri, const XMLCh* const loca
 	}
 }
 
-void MWDumpHandler::endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname)
+void MWDumpHandler::endElement(void *userData, const char *el)
 {
 	if (container == "page") {
-		element = XMLString::transcode(localname);
+		element = el;
 		if (element == "page") {
-
-			pageHandler.processPage(mwnamespace, page_id, revision_id, page_data);
+			int mwn = atoi(mwnamespace.c_str());
+			unsigned int pid = atoi(page_id.c_str());
+			unsigned int rid = atoi(revision_id.c_str());
+			pageHandler.processPage(mwn, pid, rid, page_data);
 			container.clear(); element.clear(); page_id.clear(); mwnamespace.clear(); page_data.clear(); revision_id.clear();
 		}
 	}
 
 	else if (container == "revision") {
-		element = XMLString::transcode(localname);
+		element = el;
 		if (element == "revision") container = "page";
 	}
 
 	element.clear();
 }
 
-void MWDumpHandler::characters(const XMLCh* const chars, const unsigned int length)
+void MWDumpHandler::characters(void *userData, const XML_Char *s, int len)
 {
 	if (container == "page") {
-		if (element == "ns") mwnamespace .=
+		if (element == "ns") mwnamespace.append((char *)s);
+		else if (element == "id") page_id.append((char *)s);
 	}
 
 	else if (container == "revision") {
-
+		if (element == "id") revision_id.append((char *)s);
+		else if (element == "text") page_data.append((char *)s);
 	}
-
-   	switch ($this->parserState['container']) {
-    		case 'page':
-    			switch ($this->parserState['element']) {
-    				case 'ns':
-    					$this->parserState['namespace'] .= $data;
-    					break;
-
-    				case 'id':
-    					$this->parserState['page_id'] .= $data;
-    					break;
-    			}
-    			break;
-
-    		case 'revision':
-    			switch ($this->parserState['element']) {
-    				case 'id':
-    					$this->parserState['revision_id'] .= $data;
-    					break;
-
-    				case 'text':
-    					$this->parserState['data'] .= $data;
-    					break;
-    			}
-    			break;
-    	}
-
 }
 
 } /* namespace phppreg */

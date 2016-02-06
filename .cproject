@@ -37,7 +37,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.1620992087" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 								<option id="gnu.cpp.link.option.libs.286731073" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="pcre"/>
-									<listOptionValue builtIn="false" value="xerces-c"/>
+									<listOptionValue builtIn="false" value="expat"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.163298555" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -90,7 +90,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.release.1159062754" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.release">
 								<option id="gnu.cpp.link.option.libs.770606423" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="pcre"/>
-									<listOptionValue builtIn="false" value="xerces-c"/>
+									<listOptionValue builtIn="false" value="expat"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.583715588" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

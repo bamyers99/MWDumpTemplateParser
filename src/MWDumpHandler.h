@@ -8,8 +8,8 @@
 #ifndef MWDUMPHANDLER_H_
 #define MWDUMPHANDLER_H_
 
-#include <xercesc/sax2/DefaultHandler.hpp>
 #include <string>
+#include <expat.h>
 
 namespace phppreg {
 
@@ -20,13 +20,13 @@ public:
 	virtual ~IPageHandler() {}
 };
 
-class MWDumpHandler : public xercesc::DefaultHandler
+class MWDumpHandler
 {
 public:
-	MWDumpHandler(IPageHandler& pageHandler) : pageHandler(pageHandler) {};
-	void startElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname, const xercesc::Attributes& attrs);
-	void endElement(const XMLCh* const uri, const XMLCh* const localname, const XMLCh* const qname);
-	void characters(const XMLCh* const chars, const unsigned int length);
+	MWDumpHandler(IPageHandler& pageHandler) : pageHandler(pageHandler) {}
+	void startElement(void *userData, const char *el, const char **attr);
+	void endElement(void *userData, const char *el);
+	void characters(void *userData, const XML_Char *s, int len);
 	virtual ~MWDumpHandler() {};
 
 protected:
@@ -37,8 +37,6 @@ protected:
 	IPageHandler& pageHandler;
 	std::string container;
 	std::string element;
-	char transbuf[2048];
-	XMLTranscoder* utf8Transcoder;
 
 private:
 	MWDumpHandler() = delete;

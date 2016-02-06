@@ -16,19 +16,19 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <memory>
-#include <xercesc/sax2/SAX2XMLReader.hpp>
-#include <xercesc/sax2/XMLReaderFactory.hpp>
-#include <xercesc/framework/LocalFileInputSource.hpp>
-#include <xercesc/framework/StdInInputSource.hpp>
+#include <regex>
 #include "PregMatch.h"
 #include "PhpPreg.h"
 #include "MWDumpHandler.h"
+#include "MWTemplateParamParser.h"
+#include "MWTemplate.h"
+#include <expat.h>
 
 using namespace std;
 using namespace phppreg;
-using namespace xercesc;
 
 int performTests();
 
@@ -38,6 +38,9 @@ public:
 	int parseTemplates(const string& infilepath, const string& outfilepath);
 	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data);
 	bool verbose = false;
+	map<string, int> template_ids;
+    ostream *dest = 0;
+    const regex& newline_regex = regex("\\n");
 };
 
 int main(int argc, char **argv) {
@@ -215,33 +218,127 @@ int performTests()
 	return 0;
 }
 
+MWDumpHandler *mwdh;
+
+void XMLCALL startElement(void *userData, const char *el, const char **attr)
+{
+	mwdh->startElement(userData, el, attr);
+}
+
+void XMLCALL endElement(void *userData, const char *el)
+{
+	mwdh->endElement(userData, el);
+}
+
+void XMLCALL characters(void *userData, const XML_Char *s, int len)
+{
+	mwdh->characters(userData, s, len);
+}
+
 int MainClass::parseTemplates(const string& infilepath, const string& outfilepath)
 {
-	XMLPlatformUtils::Initialize();
+	// Check for single byte xml characters for utf8 internal data
+	const XML_Feature *fl = XML_GetFeatureList();
+	if (fl->feature != XML_FEATURE_SIZEOF_XML_CHAR || fl->value != 1) {
+		cout << "expat not compiled for single byte xml characters\n";
+		return 1;
+	}
 
-	unique_ptr<SAX2XMLReader> parser(XMLReaderFactory::createXMLReader());
+	XML_Parser p = XML_ParserCreate("UTF-8");
+	if (! p) {
+	    cout << "Couldn't allocate memory for parser\n";
+	    return 2;
+	}
+
+	XML_SetElementHandler(p, startElement, endElement);
+	XML_SetCharacterDataHandler(p, characters);
 
     MWDumpHandler defaultHandler(*this);
-    parser->setContentHandler(&defaultHandler);
-    parser->setErrorHandler(&defaultHandler);
+    mwdh = &defaultHandler;
 
-    unique_ptr<InputSource> source;
+    istream *source;
     if (infilepath == "-") {
-    	source = unique_ptr<InputSource>(new StdInInputSource());
+    	source = &cin;
     } else {
-    	XMLCh *tfp = XMLString::transcode(infilepath.c_str());
-    	source = unique_ptr<InputSource>(new LocalFileInputSource(tfp));
-    	XMLString::release(&tfp);
+    	source = new ifstream(infilepath.c_str(), ios::in|ios::binary);
     }
 
-    parser->parse(*source);
+    if (outfilepath == "-") {
+    	dest = &cout;
+    } else {
+    	dest = new ofstream(outfilepath.c_str(), ios::out|ios::binary|ios::trunc);
+    }
 
-    XMLPlatformUtils::Terminate();
+	int bytes_read;
+	char *buff;
+
+    for (;;) {
+    	buff = (char *)XML_GetBuffer(p, 2048);
+    	if (buff == NULL) {
+    	    cout << "XML_GetBuffer failed\n";
+    	    return 3;
+    	}
+
+    	source->read(buff, 2048);
+    	bytes_read = source->gcount();
+
+    	if (bytes_read > 0) {
+    		if (! XML_ParseBuffer(p, bytes_read, bytes_read == 0)) {
+
+    		}
+    	}
+
+    	if (source->eof()) break;
+    }
+
+    XML_ParserFree(p);
+
+    if (infilepath != "-") delete source;
+    if (outfilepath != "-") delete dest;
 
 	return 0;
 }
 
-void MainClass::processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data)
+void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, const std::string& page_data)
 {
+	static int pagecnt = 0;
+
+	if (ns != 0) return; // only want articles
+	++pagecnt;
+	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
+
+	// Write the page id to the output file
+	*dest << "P" << page_id << "\v" << revid << "\n";
+
+	// Parse the templates
+	vector<MWTemplate> templates;
+	MWTemplateParamParser::getTemplates(&templates, page_data);
+	map<int, int> pagetemplates;
+	unsigned int tmplid;
+
+	for (auto &templ : templates) {
+		if (template_ids.find(templ.name) == template_ids.end()) continue;
+		tmplid = template_ids[templ.name];
+
+		for (auto const &pair : templ.params) {
+			if (pair.second.length() == 0) templ.params.erase(pair.first);
+		}
+
+		if (templ.params.empty()) continue;
+
+		*dest << "T" << tmplid;
+
+		for (auto &pair : templ.params) {
+			string key = pair.first;
+			string value = pair.second;
+			string bvalue = regex_replace(value, newline_regex, "<cr>"); // don't want newlines in csv file
+			if (key.length() > 255) key.erase(255);
+			if (value.length() > 255) value.erase(255);
+
+			*dest << "\v" << key << "\v" << value;
+		}
+
+		*dest << "\n";
+	}
 
 }
