@@ -25,11 +25,14 @@ namespace phppreg {
 class MWTemplate
 {
 public:
-	MWTemplate();
+	MWTemplate(const std::string& name, const std::map<std::string, std::string>& params) : name(name), params(params) {}
 	virtual ~MWTemplate();
 
 	std::string name;
 	std::map<std::string, std::string> params;
+
+private:
+	MWTemplate() = delete;
 };
 
 } /* namespace phppreg */

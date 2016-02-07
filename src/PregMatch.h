@@ -63,20 +63,24 @@ public:
 	void setName(const int vectorOffset, const std::string& text);
 	void setName(const int vectorOffset, const char* text);
 	void setName(const int vectorOffset, const unsigned char* text);
-	void fillMap(const std::map<std::string, int> nameMap);
+	void fillMap(const std::map<std::string, int>& nameMap);
 	void clearMap();
 
 	/**
 	 * throws out_of_range if name not found
 	 */
-	const std::shared_ptr<MatchItem>& operator[] (const std::string index) const;
+	const std::shared_ptr<MatchItem>& operator[] (const std::string& index) const;
 	const std::shared_ptr<MatchItem>& operator[] (int index) const;
+	const std::shared_ptr<MatchItem>& at(const std::string& index) const;
+	const std::shared_ptr<MatchItem>& at(int index) const;
 
 	/**
 	 * throws out_of_range if name not found
 	 */
-	std::shared_ptr<MatchItem>& operator[] (const std::string index);
+	std::shared_ptr<MatchItem>& operator[] (const std::string& index);
 	std::shared_ptr<MatchItem>& operator[] (int index);
+	std::shared_ptr<MatchItem>& at(const std::string& index);
+	std::shared_ptr<MatchItem>& at(int index);
 
 	/**
 	 * isSet
@@ -86,7 +90,7 @@ public:
 	 * @param index Index to test
 	 * @return Is it set
 	 */
-	bool isSet(const std::string index);
+	bool isSet(const std::string& index);
 
 protected:
 	std::map<std::string, int> nameMap;

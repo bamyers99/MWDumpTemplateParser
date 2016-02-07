@@ -65,7 +65,7 @@ void MatchVector::setName(const int vectorOffset, const string& text)
 		throw out_of_range(os.str());
 	}
 
-	nameMap.emplace(text, vectorOffset);
+	nameMap[text] = vectorOffset;
 }
 
 void MatchVector::setName(const int vectorOffset, const char* text)
@@ -76,7 +76,7 @@ void MatchVector::setName(const int vectorOffset, const char* text)
 		throw out_of_range(os.str());
 	}
 
-	nameMap.emplace(text, vectorOffset);
+	nameMap[text] = vectorOffset;
 }
 
 void MatchVector::setName(const int vectorOffset, const unsigned char* text)
@@ -87,10 +87,10 @@ void MatchVector::setName(const int vectorOffset, const unsigned char* text)
 		throw out_of_range(os.str());
 	}
 
-	nameMap.emplace(reinterpret_cast<const char*>(text), vectorOffset);
+	nameMap[text] = vectorOffset;
 }
 
-void MatchVector::fillMap(const map<string, int> nameMap)
+void MatchVector::fillMap(const map<string, int>& nameMap)
 {
 	this->nameMap = nameMap;
 }
@@ -100,9 +100,9 @@ void MatchVector::clearMap()
 	nameMap.clear();
 }
 
-const shared_ptr<MatchItem>& MatchVector::operator[] (const string index) const
+const shared_ptr<MatchItem>& MatchVector::operator[] (const string& index) const
 {
-	map<string, int>::const_iterator it = nameMap.find(index);
+	map<string, int>::const_iterator& it = nameMap.find(index);
 	if (it == nameMap.end()) {
 		ostringstream os;
 		os << "MatchVector::operator[] name (" << index << ") not found";
@@ -117,9 +117,19 @@ const shared_ptr<MatchItem>& MatchVector::operator[] (int index) const
 	return at(index);
 }
 
-shared_ptr<MatchItem>& MatchVector::operator[] (const string index)
+const shared_ptr<MatchItem>& MatchVector::at(const std::string& index) const
 {
-	map<string, int>::const_iterator it = nameMap.find(index);
+	return this[index];
+}
+
+const shared_ptr<MatchItem>& MatchVector::at(int index) const
+{
+	return this[index];
+}
+
+shared_ptr<MatchItem>& MatchVector::operator[] (const string& index)
+{
+	map<string, int>::const_iterator& it = nameMap.find(index);
 	if (it == nameMap.end()) {
 		ostringstream os;
 		os << "MatchVector::operator[] name (" << index << ") not found";
@@ -134,7 +144,17 @@ shared_ptr<MatchItem>& MatchVector::operator[] (int index)
 	return at(index);
 }
 
-bool MatchVector::isSet(const std::string index)
+shared_ptr<MatchItem>& MatchVector::at(const std::string& index)
+{
+	return this[index];
+}
+
+shared_ptr<MatchItem>& MatchVector::at(int index)
+{
+	return this[index];
+}
+
+bool MatchVector::isSet(const std::string& index)
 {
 	return (nameMap.count(index) == 1);
 }

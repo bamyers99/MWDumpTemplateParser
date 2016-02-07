@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <pcre.h>
 
 #include "PregMatch.h"
@@ -61,6 +62,10 @@ public:
 	 * @param flags COMPILE_OPTIONS
 	 */
 	PhpPreg(const unsigned char* pattern, int flags = PREG_USE_JIT) { init(reinterpret_cast<const char*>(pattern), flags); }
+
+	PhpPreg(const PhpPreg& other);
+
+	PhpPreg() {}
 
 	/**
 	 * isError
@@ -110,8 +115,8 @@ public:
 
 protected:
 	std::string errmsg;
-	pcre* re = NULL;
-	pcre_extra* study = NULL;
+	std::shared_ptr<pcre> re;
+	std::shared_ptr<pcre_extra> study;
 	std::map<std::string, int> nameMap;
 
 	void init(const std::string& pattern, int flags);
@@ -119,8 +124,6 @@ protected:
 	void loadMatchVector(MatchVector& matches, int capcount, const std::string& subject, const int ovector[]) const;
 
 private:
-	PhpPreg() = delete;
-	PhpPreg(const PhpPreg& other) = delete;
 	PhpPreg(PhpPreg&& other) = delete;
 	PhpPreg& operator= (const PhpPreg& other) = delete;
 	PhpPreg& operator= (PhpPreg&& other) = delete;

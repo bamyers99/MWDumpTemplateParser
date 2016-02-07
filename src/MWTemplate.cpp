@@ -18,12 +18,6 @@
 
 namespace phppreg {
 
-MWTemplate::MWTemplate()
-{
-	// TODO Auto-generated constructor stub
-
-}
-
 MWTemplate::~MWTemplate()
 {
 	// TODO Auto-generated destructor stub

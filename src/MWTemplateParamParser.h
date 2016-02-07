@@ -19,16 +19,23 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "MWTemplate.h"
+#include "PhpPreg.h"
 
 namespace phppreg {
 
 class MWTemplateParamParser
 {
 public:
-	MWTemplateParamParser();
-	static void getTemplates(std::vector<MWTemplate> *templates, const std::string& page_data);
-	virtual ~MWTemplateParamParser();
+	MWTemplateParamParser() {}
+	static void getTemplates(std::vector<MWTemplate> *templates, const std::string& origdata);
+	virtual ~MWTemplateParamParser() {}
+
+	static std::map<std::string, PhpPreg> regexs;
+	const static int MAX_ITERATIONS;
+	static PhpPreg COMMENT_REGEX;
+	static PhpPreg MARKER_REGEX;
 };
 
 } /* namespace phppreg */

@@ -19,7 +19,6 @@
 #include <fstream>
 #include <string.h>
 #include <memory>
-#include <regex>
 #include "PregMatch.h"
 #include "PhpPreg.h"
 #include "MWDumpHandler.h"
@@ -40,7 +39,6 @@ public:
 	bool verbose = false;
 	map<string, int> template_ids;
     ostream *dest = 0;
-    const regex& newline_regex = regex("\\n");
 };
 
 int main(int argc, char **argv) {
@@ -240,13 +238,13 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
 	// Check for single byte xml characters for utf8 internal data
 	const XML_Feature *fl = XML_GetFeatureList();
 	if (fl->feature != XML_FEATURE_SIZEOF_XML_CHAR || fl->value != 1) {
-		cout << "expat not compiled for single byte xml characters\n";
+		cerr << "expat not compiled for single byte xml characters\n";
 		return 1;
 	}
 
 	XML_Parser p = XML_ParserCreate("UTF-8");
 	if (! p) {
-	    cout << "Couldn't allocate memory for parser\n";
+		cerr << "Couldn't allocate memory for parser\n";
 	    return 2;
 	}
 
@@ -275,16 +273,17 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     for (;;) {
     	buff = (char *)XML_GetBuffer(p, 2048);
     	if (buff == NULL) {
-    	    cout << "XML_GetBuffer failed\n";
+    	    cerr << "XML_GetBuffer failed\n";
     	    return 3;
     	}
 
     	source->read(buff, 2048);
     	bytes_read = source->gcount();
 
-    	if (bytes_read > 0) {
-    		if (! XML_ParseBuffer(p, bytes_read, bytes_read == 0)) {
-
+    	if (bytes_read >= 0) {
+    		if (! XML_ParseBuffer(p, bytes_read, source->eof())) {
+    			cerr << "XML_ParseBuffer failed\n";
+    			return 4;
     		}
     	}
 
@@ -330,8 +329,8 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 
 		for (auto &pair : templ.params) {
 			string key = pair.first;
-			string value = pair.second;
-			string bvalue = regex_replace(value, newline_regex, "<cr>"); // don't want newlines in csv file
+			string& value = pair.second;
+			for (auto &achar : value) if (achar == '\n') achar = '\f'; // Don't want newlines in csv file
 			if (key.length() > 255) key.erase(255);
 			if (value.length() > 255) value.erase(255);
 
@@ -340,5 +339,4 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 
 		*dest << "\n";
 	}
-
 }

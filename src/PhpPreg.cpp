@@ -38,6 +38,14 @@ static const map<char, int> modifiers {
 	{'u', PCRE_UTF8 | PCRE_UCP}
 };
 
+PhpPreg::PhpPreg(const PhpPreg& other)
+{
+	errmsg = other.errmsg;
+	re = other.re;
+	study = other.study;
+	nameMap = other.nameMap;
+}
+
 PhpPreg::~PhpPreg()
 {
 	if (re != NULL) pcre_free(re);
