@@ -29,37 +29,37 @@ namespace phppreg {
  ***************/
 int MatchVector::addItem(const int textOffset, const string& text)
 {
-	emplace_back(new MatchItem(textOffset, text));
-	return size() - 1;
+	myVector.emplace_back(new MatchItem(textOffset, text));
+	return myVector.size() - 1;
 }
 
 int MatchVector::addItem(const int textOffset, const char* text)
 {
-	emplace_back(new MatchItem(textOffset, text));
-	return size() - 1;
+	myVector.emplace_back(new MatchItem(textOffset, text));
+	return myVector.size() - 1;
 }
 
 int MatchVector::addItem(const int textOffset, const unsigned char* text)
 {
-	emplace_back(new MatchItem(textOffset, text));
-	return size() - 1;
+	myVector.emplace_back(new MatchItem(textOffset, text));
+	return myVector.size() - 1;
 }
 
 int MatchVector::addItem(const int textOffset, const char* text, int length)
 {
-	emplace_back(new MatchItem(textOffset, text, length));
-	return size() - 1;
+	myVector.emplace_back(new MatchItem(textOffset, text, length));
+	return myVector.size() - 1;
 }
 
 int MatchVector::addItem(const int textOffset, const unsigned char* text, int length)
 {
-	emplace_back(new MatchItem(textOffset, text, length));
-	return size() - 1;
+	myVector.emplace_back(new MatchItem(textOffset, text, length));
+	return myVector.size() - 1;
 }
 
 void MatchVector::setName(const int vectorOffset, const string& text)
 {
-	if (vectorOffset < 0 || vectorOffset >= (int)size()) {
+	if (vectorOffset < 0 || vectorOffset >= (int)myVector.size()) {
 		ostringstream os;
 		os << "MatchVector::setName invalid vectorOffset (" << vectorOffset << ")";
 		throw out_of_range(os.str());
@@ -70,7 +70,7 @@ void MatchVector::setName(const int vectorOffset, const string& text)
 
 void MatchVector::setName(const int vectorOffset, const char* text)
 {
-	if (vectorOffset < 0 || vectorOffset >= (int)size()) {
+	if (vectorOffset < 0 || vectorOffset >= (int)myVector.size()) {
 		ostringstream os;
 		os << "MatchVector::setName invalid vectorOffset (" << vectorOffset << ")";
 		throw out_of_range(os.str());
@@ -81,13 +81,13 @@ void MatchVector::setName(const int vectorOffset, const char* text)
 
 void MatchVector::setName(const int vectorOffset, const unsigned char* text)
 {
-	if (vectorOffset < 0 || vectorOffset >= (int)size()) {
+	if (vectorOffset < 0 || vectorOffset >= (int)myVector.size()) {
 		ostringstream os;
 		os << "MatchVector::setName invalid vectorOffset (" << vectorOffset << ")";
 		throw out_of_range(os.str());
 	}
 
-	nameMap[text] = vectorOffset;
+	nameMap[reinterpret_cast<const char*>(text)] = vectorOffset;
 }
 
 void MatchVector::fillMap(const map<string, int>& nameMap)
@@ -102,61 +102,67 @@ void MatchVector::clearMap()
 
 const shared_ptr<MatchItem>& MatchVector::operator[] (const string& index) const
 {
-	map<string, int>::const_iterator& it = nameMap.find(index);
-	if (it == nameMap.end()) {
-		ostringstream os;
-		os << "MatchVector::operator[] name (" << index << ") not found";
-		throw out_of_range(os.str());
-	}
-
-	return at(it->second);
+	return at(index);
 }
 
 const shared_ptr<MatchItem>& MatchVector::operator[] (int index) const
 {
-	return at(index);
+	return myVector.at(index);
 }
 
 const shared_ptr<MatchItem>& MatchVector::at(const std::string& index) const
 {
-	return this[index];
-}
-
-const shared_ptr<MatchItem>& MatchVector::at(int index) const
-{
-	return this[index];
-}
-
-shared_ptr<MatchItem>& MatchVector::operator[] (const string& index)
-{
-	map<string, int>::const_iterator& it = nameMap.find(index);
+	const map<string, int>::const_iterator& it = nameMap.find(index);
 	if (it == nameMap.end()) {
 		ostringstream os;
 		os << "MatchVector::operator[] name (" << index << ") not found";
 		throw out_of_range(os.str());
 	}
 
-	return at(it->second);
+	return myVector.at(it->second);
 }
 
-shared_ptr<MatchItem>& MatchVector::operator[] (int index)
+const shared_ptr<MatchItem>& MatchVector::at(int index) const
+{
+	return myVector.at(index);
+}
+
+shared_ptr<MatchItem>& MatchVector::operator[] (const string& index)
 {
 	return at(index);
 }
 
+shared_ptr<MatchItem>& MatchVector::operator[] (int index)
+{
+	return myVector.at(index);
+}
+
 shared_ptr<MatchItem>& MatchVector::at(const std::string& index)
 {
-	return this[index];
+	const map<string, int>::const_iterator& it = nameMap.find(index);
+	if (it == nameMap.end()) {
+		ostringstream os;
+		os << "MatchVector::operator[] name (" << index << ") not found";
+		throw out_of_range(os.str());
+	}
+
+	return myVector.at(it->second);
 }
 
 shared_ptr<MatchItem>& MatchVector::at(int index)
 {
-	return this[index];
+	return myVector.at(index);
 }
 
 bool MatchVector::isSet(const std::string& index)
 {
 	return (nameMap.count(index) == 1);
+}
+
+void MatchVector::clear()
+{
+	myVector.clear();
+	clearMap();
 }
 
 } /* namespace phppreg */

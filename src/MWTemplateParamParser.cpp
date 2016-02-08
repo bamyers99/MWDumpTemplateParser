@@ -33,8 +33,8 @@ map<string, PhpPreg> MWTemplateParamParser::regexs = {
 };
 
 const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
-PhpPreg COMMENT_REGEX("/<!--.*?-->/us");
-PhpPreg MARKER_REGEX("!\v\\d+\f!");
+PhpPreg MWTemplateParamParser::COMMENT_REGEX("/<!--.*?-->/us");
+PhpPreg MWTemplateParamParser::MARKER_REGEX("!\v\\d+\f!");
 
 /**
  * Get template names and parameters in a string.
@@ -43,7 +43,7 @@ PhpPreg MARKER_REGEX("!\v\\d+\f!");
  * @param results
  * @param page_data
  */
-void MWTemplateParamParser::getTemplates(std::vector<MWTemplate> *results, const std::string& origdata)
+void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const string& origdata)
 {
 		int itercnt = 0;
 		bool match_found = true;
@@ -65,7 +65,8 @@ void MWTemplateParamParser::getTemplates(std::vector<MWTemplate> *results, const
 		string param_name;
 		string param_value;
 
-		string& data = preg_replace(COMMENT_REGEX, "", origdata); // Strip comments
+		string data = origdata;
+		COMMENT_REGEX.replace(&data, ""); // Strip comments
 
 		while (match_found) {
 			if (++itercnt > MAX_ITERATIONS) {
@@ -82,11 +83,14 @@ void MWTemplateParamParser::getTemplates(std::vector<MWTemplate> *results, const
 
 					for (auto match : matches) {
 						// See if there are any containers inside
+						bool parent_continue = false;
 						for (auto &type_regex2 : regexs) {
 							if (type_regex2.second.match(match->at("content")->text)) {
-								continue 2;
+								parent_continue = true;
 							}
 						}
+
+						if (parent_continue) continue;
 
 						// Replace the match with a marker
 						ostringstream oss;

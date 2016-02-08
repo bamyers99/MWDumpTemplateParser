@@ -21,10 +21,10 @@
 
 using namespace std;
 
-void string_replace(string *subject, const string& search, const string& sreplace, int count)
+void string_replace(string *subject, const string& search, const string& sreplace, int limit)
 {
-    if (! count || ! search.length()) return;
-	int findPos = subject->find(search);
+    if (! limit || ! search.length()) return;
+    string::size_type findPos = subject->find(search);
 	if (findPos == string::npos) return;
 	if (search.length() == 1 && sreplace.length() == 1) {
 		replace(subject->begin(), subject->end(), search[0], sreplace[0]);
@@ -37,13 +37,13 @@ void string_replace(string *subject, const string& search, const string& sreplac
     string newString;
     newString.reserve(subject->length());
 
-    if (count < 0) count = 1000000;
+    if (limit < 0) limit = 1000000;
 
     do {
         newString.append(*subject, lastPos, findPos - lastPos);
         newString += sreplace;
         lastPos = findPos + searchLen;
-        if (++rep_count == count) break;
+        if (++rep_count == limit) break;
         findPos = subject->find(search, lastPos);
     } while (findPos != string::npos);
 
@@ -54,7 +54,7 @@ void string_replace(string *subject, const string& search, const string& sreplac
 
 void string_trim(string *subject, const string& whitespace)
 {
-	int pos = subject->find_last_not_of(whitespace);
+	string::size_type pos = subject->find_last_not_of(whitespace);
 	if (pos == string::npos) {
 		subject->clear();
 		return;
@@ -66,24 +66,27 @@ void string_trim(string *subject, const string& whitespace)
 	if (pos > 0) subject->erase(0, pos);
 }
 
-void string_split(const string& subject, const string& separator, vector<string> *pieces, int maxcount)
+void string_split(const string& subject, const string& separator, vector<string> *pieces, int limit)
 {
 	pieces->clear();
-	int findPos = subject.find(separator);
-	if (findPos == string::npos) return;
+	string::size_type findPos = subject.find(separator);
+	if (findPos == string::npos) {
+		pieces->emplace_back(subject);
+		return;
+	}
     int lastPos = 0;
     int sepLen = separator.length();
 	int rep_count = 0;
 
-    if (maxcount < 0) maxcount = 1000001;
-    --maxcount;
+    if (limit < 0) limit = 1000001;
+    --limit;
 
 	do {
-		pieces->emplace(subject.substr(lastPos, findPos - lastPos));
+		pieces->emplace_back(subject.substr(lastPos, findPos - lastPos));
         lastPos = findPos + sepLen;
-        if (++rep_count == maxcount) break;
+        if (++rep_count == limit) break;
 		findPos = subject.find(separator, lastPos);
 	} while (findPos != string::npos);
 
-	pieces->emplace(subject.substr(lastPos));
+	pieces->emplace_back(subject.substr(lastPos));
 }

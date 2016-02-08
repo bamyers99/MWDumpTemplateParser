@@ -24,6 +24,7 @@
 #include "MWDumpHandler.h"
 #include "MWTemplateParamParser.h"
 #include "MWTemplate.h"
+#include "string_util.h"
 #include <expat.h>
 
 using namespace std;
@@ -77,6 +78,10 @@ int performTests()
 {
 	cout << "Performing tests\n";
 
+	/**
+	 * MatchVector tests
+	 */
+
 	// MatchVector.addItem
 	MatchVector testVector;
 	string testitem1text = "Test item 1";
@@ -112,6 +117,10 @@ int performTests()
 		cout << "instance survival failed\n";
 		return 4;
 	}
+
+	/**
+	 * PhpPreg tests
+	 */
 
 	// Missing ending delimiter
 	PhpPreg phpPreg1("/abc");
@@ -211,6 +220,105 @@ int performTests()
 		return 19;
 	}
 
+	// replace
+	PhpPreg phpPreg6("/<!--.*?-->/us");
+	string subject = "begin<!-- some comment --> end";
+	phpPreg6.replace(&subject, "");
+	if (subject != "begin end") {
+		cout << "PhpPreg::replace failed\n";
+		return 20;
+	}
+
+	/**
+	 * string_util tests
+	 */
+
+	// string_replace
+	subject = "do you know your abc's? abc's yes";
+	string_replace(&subject, "abc", "def");
+	if (subject != "do you know your def's? def's yes") {
+		cout << "string_replace failed\n";
+		return 21;
+	}
+
+	// string_trim
+	subject ="\t non-whitespace \n non-whitespace\r\n";
+	string_trim(&subject);
+	if (subject != "non-whitespace \n non-whitespace") {
+		cout << "string_trim failed\n";
+		return 22;
+	}
+
+	// string_split
+	subject ="abc|def|hij";
+	vector<string> splits;
+	string_split(subject, "|", &splits);
+	if (splits.size() != 3 || splits[0] != "abc" || splits[1] != "def" || splits[2] != "hij") {
+		cout << "string_split failed\n";
+		return 23;
+	}
+
+	subject ="ABC";
+	string_split(subject, "|", &splits);
+	if (splits.size() != 1 || splits[0] != "ABC") {
+		cout << "string_split sep not found failed\n";
+		return 24;
+	}
+
+	/**
+	 * MWTemplateParamParser
+	 */
+
+	// getTemplates
+	vector<MWTemplate> results;
+	string origdata = " \
+		{{Infobox_person \
+		|name = [[Fred]] <!-- some comment --> \
+		|birth_date={{birth date|1984|12|13}} \
+		}} \
+		It is true.<ref>{{Cite web|url=http://a.com|title=Website}}</ref> \
+		{| \
+		|- \
+		|abc {{{2}}} {{sort|ABC}} \
+		|} \
+		";
+	MWTemplateParamParser::getTemplates(&results, origdata);
+
+	if (results.size() != 4) {
+		cout << "MWTemplateParamParser::getTemplates failed\n";
+		return 25;
+	}
+
+	for (auto tmpl : results) {
+		if (tmpl.name == "Infobox person") {
+			if (tmpl.params["name"] != "[[Fred]]" || tmpl.params["birth_date"] != "{{birth date|1984|12|13}}") {
+				cout << "Template Infobox person failed\n";
+				return 26;
+			}
+
+		} else if (tmpl.name == "Birth date") {
+			if (tmpl.params["1"] != "1984" || tmpl.params["2"] != "12" || tmpl.params["3"] != "13") {
+				cout << "Template Birth date failed\n";
+				return 27;
+			}
+
+		} else if (tmpl.name == "Cite web") {
+			if (tmpl.params["url"] != "http://a.com" || tmpl.params["title"] != "Website") {
+				cout << "Template Cite web failed\n";
+				return 28;
+			}
+
+		} else if (tmpl.name == "Sort") {
+			if (tmpl.params["1"] != "ABC") {
+				cout << "Template Sort failed\n";
+				return 29;
+			}
+
+		} else {
+			cout << "MWTemplateParamParser::getTemplates failed unknown tmpl.name = " << tmpl.name << "\n";
+			return 30;
+		}
+	}
 
 	cout << "All tests passed\n";
 	return 0;

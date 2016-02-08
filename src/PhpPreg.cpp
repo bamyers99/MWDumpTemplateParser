@@ -24,20 +24,6 @@ using namespace std;
 
 namespace phppreg {
 
-static const map<char, int> modifiers {
-	{'i', PCRE_CASELESS},
-	{'m', PCRE_MULTILINE},
-	{'s', PCRE_DOTALL},
-	{'x', PCRE_EXTENDED},
-	{'A', PCRE_ANCHORED},
-	{'D', PCRE_DOLLAR_ENDONLY},
-	{'S', -1},
-	{'U', PCRE_UNGREEDY},
-	{'X', PCRE_EXTRA},
-	{'J', PCRE_INFO_JCHANGED},
-	{'u', PCRE_UTF8 | PCRE_UCP}
-};
-
 PhpPreg::PhpPreg(const PhpPreg& other)
 {
 	errmsg = other.errmsg;
@@ -46,10 +32,28 @@ PhpPreg::PhpPreg(const PhpPreg& other)
 	nameMap = other.nameMap;
 }
 
-PhpPreg::~PhpPreg()
+/**
+ * Necessary because static initializer was not getting called before class constructor was called.
+ */
+unique_ptr<map<char, int>>& PhpPreg::getModTable()
 {
-	if (re != NULL) pcre_free(re);
-	if (study != NULL) pcre_free_study(study);
+	static unique_ptr<map<char, int>> modifiers(new map<char, int>);
+
+	if (! modifiers->empty()) return modifiers;
+
+	modifiers->insert(pair<char,int>('i', PCRE_CASELESS));
+	modifiers->insert(pair<char,int>('m', PCRE_MULTILINE));
+	modifiers->insert(pair<char,int>('s', PCRE_DOTALL));
+	modifiers->insert(pair<char,int>('x', PCRE_EXTENDED));
+	modifiers->insert(pair<char,int>('A', PCRE_ANCHORED));
+	modifiers->insert(pair<char,int>('D', PCRE_DOLLAR_ENDONLY));
+	modifiers->insert(pair<char,int>('S', -1));
+	modifiers->insert(pair<char,int>('U', PCRE_UNGREEDY));
+	modifiers->insert(pair<char,int>('X', PCRE_EXTRA));
+	modifiers->insert(pair<char,int>('J', PCRE_INFO_JCHANGED));
+	modifiers->insert(pair<char,int>('u', PCRE_UTF8 | PCRE_UCP));
+
+	return modifiers;
 }
 
 /**
@@ -98,12 +102,14 @@ void PhpPreg::init(const string& pattern, int flags)
 	// Get any pattern modifiers
 	string mods = pattern.substr(endPos + 1);
 
+
+	unique_ptr<map<char, int>>& modifiers = getModTable();
 	map<char,int>::const_iterator it;
 
 	for (char c : mods) {
 		if (c == ' ' || c == '\n') continue;
-		it = modifiers.find(c);
-		if (it == modifiers.end()){
+		it = modifiers->find(c);
+		if (it == modifiers->end()){
 			errmsg.append("invalid modifier = ").append(1, c);
 			return;
 		}
@@ -114,7 +120,7 @@ void PhpPreg::init(const string& pattern, int flags)
 	string realpattern = pattern.substr(1, endPos - 1);
 
 	// Compile the pattern
-	re = pcre_compile(realpattern.c_str(), options, &errptr, &erroffset, NULL);
+	re.reset(pcre_compile(realpattern.c_str(), options, &errptr, &erroffset, NULL), ptr_fun(pcre_free));
 
 	if (re == NULL) {
 		ostringstream os;
@@ -130,7 +136,7 @@ void PhpPreg::init(const string& pattern, int flags)
 		int studyoptions = 0;
 		if (flags & PREG_USE_JIT) studyoptions |= PCRE_STUDY_JIT_COMPILE;
 
-		study = pcre_study(re, studyoptions, &errptr);
+		study.reset(pcre_study(re.get(), studyoptions, &errptr), ptr_fun(pcre_free_study));
 
 		if (study == NULL) {
 			ostringstream os;
@@ -143,7 +149,7 @@ void PhpPreg::init(const string& pattern, int flags)
 	// Store named parameter offsets
 	int namecount;
 
-	pcre_fullinfo(re, study, PCRE_INFO_NAMECOUNT, &namecount);
+	pcre_fullinfo(re.get(), study.get(), PCRE_INFO_NAMECOUNT, &namecount);
 
 	if (namecount > 0) {
 		int name_entry_size;
@@ -152,15 +158,15 @@ void PhpPreg::init(const string& pattern, int flags)
 
 		// Get the name table address and name entry size
 
-		pcre_fullinfo(re, study, PCRE_INFO_NAMETABLE, &name_table);
-		pcre_fullinfo(re, study, PCRE_INFO_NAMEENTRYSIZE, &name_entry_size);
+		pcre_fullinfo(re.get(), study.get(), PCRE_INFO_NAMETABLE, &name_table);
+		pcre_fullinfo(re.get(), study.get(), PCRE_INFO_NAMEENTRYSIZE, &name_entry_size);
 
 		// Store the offsets in the name map
 
 		for (int i = 0; i < namecount; ++i)
 		{
 			n = (name_table[0] << 8) | name_table[1];
-			nameMap.emplace(string(reinterpret_cast<const char*>(name_table + 2)), n);
+			nameMap[string(reinterpret_cast<const char*>(name_table + 2))] = n;
 			name_table += name_entry_size;
 		}
 	}
@@ -193,13 +199,10 @@ int PhpPreg::matchImpl(const string& subject, void *matches, int flags, int offs
 
 	if (matches) {
 		if (matchall) ((vector<shared_ptr<MatchVector>> *)matches)->clear();
-		else {
-			((MatchVector *)matches)->clear();
-			((MatchVector *)matches)->clearMap();
-		}
+		else ((MatchVector *)matches)->clear();
 	}
 
-	rc = pcre_exec(re, study, subject.c_str(), subject.length(), offset, 0, ovector, OVECCOUNT);
+	rc = pcre_exec(re.get(), study.get(), subject.c_str(), subject.length(), offset, 0, ovector, OVECCOUNT);
 
 	if (rc < 0) {
 		switch (rc) {
@@ -251,7 +254,7 @@ int PhpPreg::matchImpl(const string& subject, void *matches, int flags, int offs
 	unsigned int option_bits;
 	int subject_length = subject.length();
 
-	pcre_fullinfo(re, study, PCRE_INFO_OPTIONS, &option_bits);
+	pcre_fullinfo(re.get(), study.get(), PCRE_INFO_OPTIONS, &option_bits);
 	int utf8 = option_bits & PCRE_UTF8;
 	option_bits &= PCRE_NEWLINE_CR | PCRE_NEWLINE_LF | PCRE_NEWLINE_CRLF |
 	               PCRE_NEWLINE_ANY |PCRE_NEWLINE_ANYCRLF;
@@ -295,7 +298,7 @@ int PhpPreg::matchImpl(const string& subject, void *matches, int flags, int offs
 	    }
 
 		// Run the next matching operation
-		rc = pcre_exec(re, study, subject.c_str(), subject.length(), start_offset, options, ovector, OVECCOUNT);
+		rc = pcre_exec(re.get(), study.get(), subject.c_str(), subject.length(), start_offset, options, ovector, OVECCOUNT);
 
 		/* This time, a result of NOMATCH isn't an error. If the value in "options"
 		is zero, it just means we have found all possible matches, so the loop ends.
@@ -383,6 +386,39 @@ void PhpPreg::loadMatchVector(MatchVector& matches, int capcount, const string& 
 		startPos = ovector[2*i];
 		matches.addItem(startPos, subject_ptr + startPos, ovector[2*i+1] - startPos);
 	}
+}
+
+/**
+ * replace
+ */
+int PhpPreg::replace(std::string *subject, const std::string& replacement, int limit)
+{
+	if (! limit || ! subject->length()) return 0;
+	if (limit < 0) limit = 1000000;
+	vector<shared_ptr<MatchVector>> matches;
+	int searchLen;
+	int findPos;
+    string newString;
+    newString.reserve(subject->length());
+    int lastPos = 0;
+
+	int rep_count = matchImpl(*subject, &matches, 0, 0, 1);
+	if (rep_count > limit) rep_count = limit;
+
+	for (limit = 0; limit < rep_count; ++limit) {
+		searchLen = matches[limit]->at(0)->text.length();
+		findPos = matches[limit]->at(0)->textOffset;
+
+        newString.append(*subject, lastPos, findPos - lastPos);
+        newString += replacement;
+        lastPos = findPos + searchLen;
+	}
+
+    newString += subject->substr(lastPos);
+
+    subject->swap(newString);
+
+	return rep_count;
 }
 
 

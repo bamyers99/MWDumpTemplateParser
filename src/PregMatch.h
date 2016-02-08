@@ -47,10 +47,10 @@ private:
 /***************
  * MatchVector *
  ***************/
-class PCRECPP_EXP_DEFN MatchVector : public std::vector<std::shared_ptr<MatchItem>>
+class PCRECPP_EXP_DEFN MatchVector
 {
 public:
-	MatchVector() : vector() {};
+	MatchVector() {};
 	int addItem(const int textOffset, const std::string& text);
 	int addItem(const int textOffset, const char* text);
 	int addItem(const int textOffset, const unsigned char* text);
@@ -92,7 +92,13 @@ public:
 	 */
 	bool isSet(const std::string& index);
 
+	/**
+	 * Clear the vector
+	 */
+	void clear();
+
 protected:
+	std::vector<std::shared_ptr<MatchItem>> myVector;
 	std::map<std::string, int> nameMap;
 };
 

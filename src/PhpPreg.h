@@ -65,7 +65,9 @@ public:
 
 	PhpPreg(const PhpPreg& other);
 
-	PhpPreg() {}
+	PhpPreg() {
+		errmsg = "in empty constructor";
+	}
 
 	/**
 	 * isError
@@ -111,7 +113,20 @@ public:
 	 */
 	int matchAll(const std::string& subject, std::vector<std::shared_ptr<MatchVector>> *matches = NULL, int flags = 0, int offset = 0);
 
-	virtual ~PhpPreg();
+	/**
+	 * replace
+	 *
+	 * Replace pattern matches with replacement text.
+	 * NOTE: Backreferences are not evaluated in the replacement text.
+	 *
+	 * @param subject Text to perform replacement on
+	 * @param replacement Replacement text
+	 * @param limit Replacement count limit
+	 * @return Number of replacements
+	 */
+	int replace(std::string *subject, const std::string& replacement, int limit = -1);
+
+	virtual ~PhpPreg() {}
 
 protected:
 	std::string errmsg;
@@ -119,6 +134,7 @@ protected:
 	std::shared_ptr<pcre_extra> study;
 	std::map<std::string, int> nameMap;
 
+	std::unique_ptr<std::map<char, int>>& getModTable();
 	void init(const std::string& pattern, int flags);
 	int matchImpl(const std::string& subject, void *matches, int flags, int offset, int matchall);
 	void loadMatchVector(MatchVector& matches, int capcount, const std::string& subject, const int ovector[]) const;

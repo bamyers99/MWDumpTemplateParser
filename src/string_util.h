@@ -26,18 +26,27 @@
  * @param subject String to do replacement in
  * @param search Search string
  * @param replace Replacement string
- * @param count Number of replacements to do. default (-1) = replace all occurences of search
+ * @param limit Number of replacements to do. default (-1) = replace all occurences of search
  * @return number of replacements
  */
-void string_replace(std::string *subject, const std::string& search, const std::string& replace, int count = -1);
+void string_replace(std::string *subject, const std::string& search, const std::string& replace, int limit = -1);
 
 /**
- * Trim whitespace from both ends of string
+ * Trim whitespace from both ends of string.
+ *
  * @param subject Search string
  * @param whitespace Whitespace characters
  */
 void string_trim(std::string *subject, const std::string& whitespace = " \r\n\t");
 
-void string_split(const std::string& subject, const std::string& separator, std::vector<std::string> *pieces, int maxcount = -1);
+/**
+ * Split a string on a separator.
+ *
+ * @param subject String to split
+ * @param separator Separator to split on
+ * @param pieces Pieces of split string
+ * @param limit Limit number of returned pieces
+ */
+void string_split(const std::string& subject, const std::string& separator, std::vector<std::string> *pieces, int limit = -1);
 
 #endif /* STRING_UTIL_H_ */
