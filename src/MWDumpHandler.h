@@ -31,8 +31,8 @@ public:
 
 protected:
 	std::string mwnamespace;
-	std::string page_id = 0;
-	std::string revision_id = 0;
+	std::string page_id;
+	std::string revision_id;
 	std::string page_data;
 	IPageHandler& pageHandler;
 	std::string container;

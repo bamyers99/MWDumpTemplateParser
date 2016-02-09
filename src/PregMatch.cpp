@@ -156,7 +156,10 @@ shared_ptr<MatchItem>& MatchVector::at(int index)
 
 bool MatchVector::isSet(const std::string& index)
 {
-	return (nameMap.count(index) == 1);
+	const map<string, int>::const_iterator& it = nameMap.find(index);
+	if (it == nameMap.end()) return false;
+
+	return (it->second < (int)myVector.size()); // myVector may not have optional named parameters
 }
 
 void MatchVector::clear()

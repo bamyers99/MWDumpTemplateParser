@@ -46,13 +46,13 @@ void MWDumpHandler::endElement(void *userData, const char *el)
 void MWDumpHandler::characters(void *userData, const XML_Char *s, int len)
 {
 	if (container == "page") {
-		if (element == "ns") mwnamespace.append((char *)s);
-		else if (element == "id") page_id.append((char *)s);
+		if (element == "ns") mwnamespace.append((char *)s, len);
+		else if (element == "id") page_id.append((char *)s, len);
 	}
 
 	else if (container == "revision") {
-		if (element == "id") revision_id.append((char *)s);
-		else if (element == "text") page_data.append((char *)s);
+		if (element == "id") revision_id.append((char *)s, len);
+		else if (element == "text") page_data.append((char *)s, len);
 	}
 }
 

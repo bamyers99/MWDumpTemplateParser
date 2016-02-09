@@ -32,11 +32,17 @@ using namespace phppreg;
 
 int performTests();
 
+/**
+ * Sample usage:
+ * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v - - | bzip2 -9 >enwikiTemplateParams.bz2
+ */
+
 class MainClass : IPageHandler
 {
 public:
 	int parseTemplates(const string& infilepath, const string& outfilepath);
 	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data);
+	void loadTemplateIds();
 	bool verbose = false;
 	map<string, int> template_ids;
     ostream *dest = 0;
@@ -71,6 +77,7 @@ int main(int argc, char **argv) {
 
 	MainClass mc;
 	mc.verbose = verbose;
+	mc.loadTemplateIds();
 	return mc.parseTemplates(infilepath, outfilepath);
 }
 
@@ -289,7 +296,7 @@ int performTests()
 		return 25;
 	}
 
-	for (auto tmpl : results) {
+	for (auto &tmpl : results) {
 		if (tmpl.name == "Infobox person") {
 			if (tmpl.params["name"] != "[[Fred]]" || tmpl.params["birth_date"] != "{{birth date|1984|12|13}}") {
 				cout << "Template Infobox person failed\n";
@@ -318,6 +325,16 @@ int performTests()
 			cout << "MWTemplateParamParser::getTemplates failed unknown tmpl.name = " << tmpl.name << "\n";
 			return 30;
 		}
+	}
+
+	MainClass mc;
+	string infilepath = "MWDumpTest.xml";
+	string outfilepath = "-";
+	mc.loadTemplateIds();
+	int retval = mc.parseTemplates(infilepath, outfilepath);
+	if (retval) {
+		cout << "parseTemplates failed = " << retval << "\n";
+		return 31;
 	}
 
 	cout << "All tests passed\n";
@@ -367,12 +384,20 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     	source = &cin;
     } else {
     	source = new ifstream(infilepath.c_str(), ios::in|ios::binary);
+    	if (source->fail()) {
+    	    cerr << "new ifstream failed for " << infilepath << "\n";
+    	    return 3;
+    	}
     }
 
     if (outfilepath == "-") {
     	dest = &cout;
     } else {
     	dest = new ofstream(outfilepath.c_str(), ios::out|ios::binary|ios::trunc);
+    	if (dest->fail()) {
+    	    cerr << "new ofstream failed for " << outfilepath << "\n";
+    	    return 4;
+    	}
     }
 
 	int bytes_read;
@@ -382,16 +407,20 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     	buff = (char *)XML_GetBuffer(p, 2048);
     	if (buff == NULL) {
     	    cerr << "XML_GetBuffer failed\n";
-    	    return 3;
+    	    return 5;
     	}
 
     	source->read(buff, 2048);
+    	if (source->fail() && ! source->eof()) {
+			cerr << "source->read failed\n";
+			return 6;
+    	}
     	bytes_read = source->gcount();
 
     	if (bytes_read >= 0) {
     		if (! XML_ParseBuffer(p, bytes_read, source->eof())) {
     			cerr << "XML_ParseBuffer failed\n";
-    			return 4;
+    			return 7;
     		}
     	}
 
@@ -414,14 +443,11 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 	++pagecnt;
 	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
 
-	// Write the page id to the output file
-	*dest << "P" << page_id << "\v" << revid << "\n";
-
 	// Parse the templates
 	vector<MWTemplate> templates;
 	MWTemplateParamParser::getTemplates(&templates, page_data);
-	map<int, int> pagetemplates;
-	unsigned int tmplid;
+	int tmplid;
+	bool pageWritten = false;
 
 	for (auto &templ : templates) {
 		if (template_ids.find(templ.name) == template_ids.end()) continue;
@@ -432,6 +458,12 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		}
 
 		if (templ.params.empty()) continue;
+
+		if (! pageWritten) {
+			// Write the page id to the output file
+			*dest << "P" << page_id << "\v" << revid << "\n";
+			pageWritten = true;
+		}
 
 		*dest << "T" << tmplid;
 
@@ -446,5 +478,26 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		}
 
 		*dest << "\n";
+	}
+}
+
+void MainClass::loadTemplateIds()
+{
+	string infilepath = "TemplateIds.tsv";
+	ifstream source(infilepath.c_str(), ios::in|ios::binary);
+	if (source.fail()) {
+	    cerr << "new ifstream failed for " << infilepath << "\n";
+	    return;
+	}
+
+	string line;
+	vector<string> pieces;
+
+	while (source.good()) {
+		getline(source, line);
+		if (line.length()) {
+			string_split(line, "\t", &pieces);
+			template_ids[pieces[0]] = stoi(pieces[1]);
+		}
 	}
 }

@@ -168,7 +168,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 
 					string_trim(&param_name);
 					string_trim(&param_value);
-					tmpl_params[param_name] = param_value;
+					if (param_name.length()) tmpl_params[param_name] = param_value;
 				}
 			}
 
