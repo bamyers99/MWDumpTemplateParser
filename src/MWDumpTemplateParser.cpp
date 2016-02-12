@@ -34,18 +34,80 @@ int performTests();
 
 /**
  * Sample usage:
- * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v - - | bzip2 -9 >enwikiTemplateParams.bz2
+ * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v - enwikiTemplateParams enwikiTemplateTotals&
+ * LC_ALL=C sort -n -k 1 enwikiTemplateParams >enwikiTemplateParams.sorted
  */
+
+class TemplateInfo
+{
+public:
+	int pagecount = 0;
+	int instancecount = 0;
+	map<string, int> param_name_cnt;
+	map<string, map<string, int>> param_value_cnt;
+};
 
 class MainClass : IPageHandler
 {
 public:
-	int parseTemplates(const string& infilepath, const string& outfilepath);
+	int parseTemplates(const string& infilepath, const string& outfilepath, const string& totalsoutfilepath);
 	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data);
 	void loadTemplateIds();
+	void writeTotals(const string& totalsoutfilepath);
 	bool verbose = false;
 	map<string, int> template_ids;
     ostream *dest = 0;
+    map<int, TemplateInfo *> template_info;
+    map<int, bool> blacklist = {
+    	{7585648, true},  // Reflist
+		{21067859, true}, // Italic title
+		{945764, true},   // Hatnote
+		{1239772, true},  // Clear
+		{3218295, true},  // Col-begin
+		{3218301, true},  // Col-end
+    	{4148498, true},  // Cite web
+		{4321630, true},  // Cite news
+		{4086375, true},  // Cite book
+		{8387047, true},  // Convert
+		{3501055, true},  // Persondata
+		{4740319, true},  // Cite journal
+		{10118245, true}, // Coord
+		{23092408, true}, // Sfn
+		{3164016, true},  // Citation
+		{8577339, true},  // Dts
+		{689990, true},   // Taxobox
+		{2868018, true},  // Nihongo
+		{5326834, true},  // Harvard citation no brackets
+		{22612844, true}, // Football box collapsible
+		{5098428, true},  // Episode list
+		{9731674, true},  // Jct
+		{6075367, true},  // FlagIOCathlete
+		{10314667, true}, // Sortname
+		{23470924, true}, // FlagIOC2athlete
+		{11850048, true}, // Location map~
+		{11849914, true}, // Location map+
+		{30759408, true}, // NRHP row
+		{1794726, true},  // Election box turnout
+		{10109193, true}, // CBB schedule entry
+		{3544598, true},  // Football box
+		{2468023, true},  // About
+		{8579816, true},  // CFB Schedule Entry
+		{6664883, true},  // Goal
+		{24576447, true}, // Singlechart
+		{1794728, true},  // Election box majority
+		{34231814, true}, // Canadian election result
+		{7127202, true},  // USS
+		{19963792, true}, // Episode list/sublist
+		{10840750, true}, // HMS
+		{11359357, true}, // Extended football squad player
+		{3969498, true},  // National football squad player
+		{24724613, true}, // IPAc-pl
+		{7486256, true},  // Infobox NRHP
+		{1807946, true},  // Election box hold with party link
+		{41251413, true}, // Vcite2 journal
+		{12077928, true}, // Fb cl team
+		{20030541, true}  // Fb cl2 team
+    };
 };
 
 int main(int argc, char **argv) {
@@ -59,17 +121,19 @@ int main(int argc, char **argv) {
 		else break;
 	}
 
-	if (argc - i != 2) {
-		cout << "Usage: MWDumpTemplateParser [-v] [-t] [infilepath|-] [outfilepath|-]\n";
+	if (argc - i != 3) {
+		cout << "Usage: MWDumpTemplateParser [-v] [-t] [infilepath|-] [outfilepath|-] [totals outfilepath|-]\n";
 		cout << "\t -v: verbose\n";
 		cout << "\t -t: testmode\n";
 		cout << "\t [infilepath|-]: input file path or - for stdin\n";
 		cout << "\t [outfilepath|-]: output file path or - for stdout\n";
+		cout << "\t [totals outfilepath|-]: totals output file path or - for stderr\n";
 		return 1;
 	}
 
 	string infilepath = argv[i];
 	string outfilepath = argv[i+1];
+	string totalsoutfilepath = argv[i+2];
 
 	if (testmode) {
 		return performTests();
@@ -78,7 +142,7 @@ int main(int argc, char **argv) {
 	MainClass mc;
 	mc.verbose = verbose;
 	mc.loadTemplateIds();
-	return mc.parseTemplates(infilepath, outfilepath);
+	return mc.parseTemplates(infilepath, outfilepath, totalsoutfilepath);
 }
 
 int performTests()
@@ -330,8 +394,9 @@ int performTests()
 	MainClass mc;
 	string infilepath = "MWDumpTest.xml";
 	string outfilepath = "-";
+	string totalsoutfilepath = "-";
 	mc.loadTemplateIds();
-	int retval = mc.parseTemplates(infilepath, outfilepath);
+	int retval = mc.parseTemplates(infilepath, outfilepath, totalsoutfilepath);
 	if (retval) {
 		cout << "parseTemplates failed = " << retval << "\n";
 		return 31;
@@ -358,7 +423,7 @@ void XMLCALL characters(void *userData, const XML_Char *s, int len)
 	mwdh->characters(userData, s, len);
 }
 
-int MainClass::parseTemplates(const string& infilepath, const string& outfilepath)
+int MainClass::parseTemplates(const string& infilepath, const string& outfilepath, const string& totalsoutfilepath)
 {
 	// Check for single byte xml characters for utf8 internal data
 	const XML_Feature *fl = XML_GetFeatureList();
@@ -432,6 +497,8 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     if (infilepath != "-") delete source;
     if (outfilepath != "-") delete dest;
 
+    writeTotals(totalsoutfilepath);
+
 	return 0;
 }
 
@@ -447,7 +514,8 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 	vector<MWTemplate> templates;
 	MWTemplateParamParser::getTemplates(&templates, page_data);
 	int tmplid;
-	bool pageWritten = false;
+	map<int, int> pagetemplates;
+	bool blacklisted;
 
 	for (auto &templ : templates) {
 		if (template_ids.find(templ.name) == template_ids.end()) continue;
@@ -459,25 +527,34 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 
 		if (templ.params.empty()) continue;
 
-		if (! pageWritten) {
-			// Write the page id to the output file
-			*dest << "P" << page_id << "\v" << revid << "\n";
-			pageWritten = true;
-		}
+		++pagetemplates[tmplid];
 
-		*dest << "T" << tmplid;
+		if (pagetemplates[tmplid] == 1) ++template_info[tmplid]->pagecount;
+		++template_info[tmplid]->instancecount;
+
+		blacklisted = (blacklist.find(tmplid) != blacklist.end());
+
+		if (! blacklisted) *dest << tmplid << "\t" << page_id;
 
 		for (auto &pair : templ.params) {
 			string key = pair.first;
 			string& value = pair.second;
-			for (auto &achar : value) if (achar == '\n') achar = '\f'; // Don't want newlines in csv file
+			for (auto &achar : value) if (achar == '\n' || achar == '\t') achar = ' '; // Don't want tabs/newlines in csv file
 			if (key.length() > 255) key.erase(255);
 			if (value.length() > 255) value.erase(255);
 
-			*dest << "\v" << key << "\v" << value;
+			// Calc unique values
+			++template_info[tmplid]->param_name_cnt[key];
+
+			if (template_info[tmplid]->param_value_cnt[key].size() == 50) {
+				if (! blacklisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
+			} else {
+				++template_info[tmplid]->param_value_cnt[key][value];
+				if (! blacklisted) *dest << "\t" << key << "\t" << value;
+			}
 		}
 
-		*dest << "\n";
+		if (! blacklisted) *dest << "\n";
 	}
 }
 
@@ -497,7 +574,45 @@ void MainClass::loadTemplateIds()
 		getline(source, line);
 		if (line.length()) {
 			string_split(line, "\t", &pieces);
-			template_ids[pieces[0]] = stoi(pieces[1]);
+			string name(pieces[0]);
+			int id = stoi(pieces[1]);
+			template_ids[name] = id;
+			if (template_info.find(id) == template_info.end()) template_info[id] = new TemplateInfo();
 		}
 	}
+}
+
+void MainClass::writeTotals(const string& totalsoutfilepath)
+{
+    ostream *dest;
+    if (totalsoutfilepath == "-") {
+    	dest = &cerr;
+    } else {
+    	dest = new ofstream(totalsoutfilepath.c_str(), ios::out|ios::binary|ios::trunc);
+    	if (dest->fail()) {
+    	    cerr << "new ofstream failed for " << totalsoutfilepath << "\n";
+    	}
+    }
+
+    for (auto &info_pair : template_info) {
+    	TemplateInfo* ti = info_pair.second;
+
+    	*dest << "T" << info_pair.first << "\t" << ti->pagecount << "\t" << ti->instancecount << "\n";
+
+    	for (auto &param_pair : ti->param_name_cnt) {
+    		const string& param_name = param_pair.first;
+
+    		*dest << "P" << param_name << "\t" << param_pair.second;
+
+    		if (ti->param_value_cnt[param_name].size() != 50) {
+    			for (auto &value_pair : ti->param_value_cnt[param_name]) {
+    				*dest << "\t" << value_pair.first << "\t" << value_pair.second;
+    			}
+    		}
+
+        	*dest << "\n";
+    	}
+    }
+
+    if (totalsoutfilepath != "-") delete dest;
 }

@@ -37,6 +37,7 @@ protected:
 	IPageHandler& pageHandler;
 	std::string container;
 	std::string element;
+	bool isRedirect = false;
 
 private:
 	MWDumpHandler() = delete;
