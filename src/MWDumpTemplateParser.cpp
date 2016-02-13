@@ -31,11 +31,13 @@ using namespace std;
 using namespace phppreg;
 
 int performTests();
+int calcOffsets(string infilepath, string outfilepath);
 
 /**
  * Sample usage:
  * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v - enwikiTemplateParams enwikiTemplateTotals&
- * LC_ALL=C sort -n -k 1 enwikiTemplateParams >enwikiTemplateParams.sorted
+ * LC_ALL=C sort -n -k 1,1 -k 2,2 enwikiTemplateParams >enwikiTemplateParams.sorted
+ * ./MWDumpTemplateParser -offsets enwikiTemplateParams.sorted enwikiTemplateOffsets
  */
 
 class TemplateInfo
@@ -106,7 +108,11 @@ public:
 		{1807946, true},  // Election box hold with party link
 		{41251413, true}, // Vcite2 journal
 		{12077928, true}, // Fb cl team
-		{20030541, true}  // Fb cl2 team
+		{20030541, true}, // Fb cl2 team
+		{2075417, true},  // Flagicon
+		{1695548, true},  // Flag
+		{2048472, true},  // Citation needed
+		{21044097, true}  // Use dmy dates
     };
 };
 
@@ -114,17 +120,20 @@ int main(int argc, char **argv) {
 	int i;
 	bool testmode = false;
 	bool verbose = false;
+	bool calcoffsets = false;
 
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-v") == 0) verbose = true;
 		else if (strcmp(argv[i], "-t") == 0) testmode = true;
+		else if (strcmp(argv[i], "-offsets") == 0) calcoffsets = true;
 		else break;
 	}
 
-	if (argc - i != 3) {
-		cout << "Usage: MWDumpTemplateParser [-v] [-t] [infilepath|-] [outfilepath|-] [totals outfilepath|-]\n";
+	if ((! calcoffsets && argc - i != 3) || (calcoffsets && argc - i != 2)) {
+		cout << "Usage: MWDumpTemplateParser [-v] [-t] [-offsets] [infilepath|-] [outfilepath|-] [totals outfilepath|-]\n";
 		cout << "\t -v: verbose\n";
 		cout << "\t -t: testmode\n";
+		cout << "\t -offsets: calc template start offsets\n";
 		cout << "\t [infilepath|-]: input file path or - for stdin\n";
 		cout << "\t [outfilepath|-]: output file path or - for stdout\n";
 		cout << "\t [totals outfilepath|-]: totals output file path or - for stderr\n";
@@ -133,10 +142,13 @@ int main(int argc, char **argv) {
 
 	string infilepath = argv[i];
 	string outfilepath = argv[i+1];
-	string totalsoutfilepath = argv[i+2];
+	string totalsoutfilepath;
+	if (! calcoffsets) totalsoutfilepath = argv[i+2];
 
 	if (testmode) {
 		return performTests();
+	} else if (calcoffsets) {
+		return calcOffsets(infilepath, outfilepath);
 	}
 
 	MainClass mc;
@@ -402,6 +414,18 @@ int performTests()
 		return 31;
 	}
 
+	/**
+	 * Calc offset test
+	 */
+
+	infilepath = "CalcOffsetTest.tsv";
+	outfilepath = "-";
+	retval = calcOffsets(infilepath, outfilepath);
+	if (retval) {
+		cout << "calcOffsets failed = " << retval << "\n";
+		return 32;
+	}
+
 	cout << "All tests passed\n";
 	return 0;
 }
@@ -539,7 +563,8 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		for (auto &pair : templ.params) {
 			string key = pair.first;
 			string& value = pair.second;
-			for (auto &achar : value) if (achar == '\n' || achar == '\t') achar = ' '; // Don't want tabs/newlines in csv file
+			for (auto &achar : key) if (achar == '\n' || achar == '\t') achar = ' '; // Don't want tabs/newlines in csv file
+			for (auto &achar : value) if (achar == '\n' || achar == '\t') achar = ' ';
 			if (key.length() > 255) key.erase(255);
 			if (value.length() > 255) value.erase(255);
 
@@ -596,6 +621,7 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
 
     for (auto &info_pair : template_info) {
     	TemplateInfo* ti = info_pair.second;
+    	if (ti->pagecount == 0) continue;
 
     	*dest << "T" << info_pair.first << "\t" << ti->pagecount << "\t" << ti->instancecount << "\n";
 
@@ -615,4 +641,50 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
     }
 
     if (totalsoutfilepath != "-") delete dest;
+}
+
+int calcOffsets(string infilepath, string outfilepath)
+{
+    istream *source;
+    if (infilepath == "-") {
+    	source = &cin;
+    } else {
+    	source = new ifstream(infilepath.c_str(), ios::in|ios::binary);
+    	if (source->fail()) {
+    	    cerr << "new ifstream failed for " << infilepath << "\n";
+    	    return 1;
+    	}
+    }
+
+    ostream *dest;
+    if (outfilepath == "-") {
+    	dest = &cout;
+    } else {
+    	dest = new ofstream(outfilepath.c_str(), ios::out|ios::binary|ios::trunc);
+    	if (dest->fail()) {
+    	    cerr << "new ofstream failed for " << outfilepath << "\n";
+    	    return 2;
+    	}
+    }
+
+    string prevTemplID("");
+	string line;
+	vector<string> pieces;
+
+	while (source->good()) {
+		long long offset = source->tellg();
+		getline(*source, line);
+		if (line.length()) {
+			string_split(line, "\t", &pieces);
+			string templID(pieces[0]);
+
+			if (templID != prevTemplID) {
+				*dest << templID << "\t" << offset << "\n";
+			}
+
+			prevTemplID = templID;
+		}
+	}
+
+	return 0;
 }
