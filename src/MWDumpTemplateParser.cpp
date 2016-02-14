@@ -19,6 +19,7 @@
 #include <fstream>
 #include <string.h>
 #include <memory>
+#include <sstream>
 #include "PregMatch.h"
 #include "PhpPreg.h"
 #include "MWDumpHandler.h"
@@ -426,6 +427,63 @@ int performTests()
 		return 32;
 	}
 
+	/**
+	 * processPage() test
+	 */
+	string pagedata = " \
+			{{Infobox musical artist\
+| name = Gianluca Grignani\
+| image = Gianluca Grignani - Fonte Nuova 31-05-08.JPG\
+| caption = Gianluca Grignani (2008)\
+| background = solo_singer\
+| birth_date = {{birth date and age|1972|04|07|df=y}}\
+| origin= [[Milan]], Italy\
+| instrument = Vocals, guitar, piano\
+| genre = [[Pop music|Pop]]\
+| occupation = Singer-songwriter, guitarist\
+| years_active = 1994–present\
+| First album = \
+| Latest album = \
+| Notable albums = \
+| Notable songs = \
+| Label = [[Mercury Records]], [[Ils International]], [[Strategic Marketing]], [[PolyGram]], [[Universal Music]], [[Balboa Recording Corporation]], [[Columbia Records]], [[Sony Music]]\
+\
+| website = {{URL|http://www.grignani.it}}\
+}}";
+
+	mc.dest = new ostringstream();
+	mc.processPage(0, 113, 1, pagedata);
+	string output = ((ostringstream *)mc.dest)->str();
+	delete mc.dest;
+
+	string_split(output, "\t", &splits);
+
+	if (splits[0] != "4592538" || splits[1] != "113") {
+		cout << "processPage failed, wrong template id or page id\n";
+		return 33;
+	}
+
+	map<string, string> params;
+	for (unsigned int x=2; x < splits.size(); x += 2) {
+		params[splits[x]] = splits[x+1];
+	}
+
+	map<string, bool> paramnames = {{"name",true},{"image",true},{"caption",true},{"background",true},{"birth_date",true},
+			{"origin",true},{"instrument",true},{"genre",true},{"occupation",true},{"years_active",true},{"First album",false},
+			{"Latest album",false},{"Notable albums",false},{"Notable songs",false},{"Label",true},{"website",true}};
+
+	for (auto param : paramnames) {
+		auto it = params.find(param.first);
+		if (param.second && it == params.end()) {
+			cout << "processPage failed, missing param " << param.first <<"\n";
+			return 34;
+		}
+		if (! param.second && it != params.end()) {
+			cout << "processPage failed, extra param " << param.first <<"\n";
+			return 35;
+		}
+	}
+
 	cout << "All tests passed\n";
 	return 0;
 }
@@ -545,8 +603,13 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		if (template_ids.find(templ.name) == template_ids.end()) continue;
 		tmplid = template_ids[templ.name];
 
-		for (auto const &pair : templ.params) {
-			if (pair.second.length() == 0) templ.params.erase(pair.first);
+		// Fancy code to erase map elements while iterating the map
+		for (map<string,string>::iterator it=templ.params.begin(), it_next=it, it_end=templ.params.end();
+		    it != it_end;
+		    it = it_next)
+		{
+			++it_next;
+			if (it->second.length() == 0) templ.params.erase(it);
 		}
 
 		if (templ.params.empty()) continue;
