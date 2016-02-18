@@ -749,5 +749,7 @@ int calcOffsets(string infilepath, string outfilepath)
 		}
 	}
 
+    if (outfilepath != "-") delete dest;
+
 	return 0;
 }
