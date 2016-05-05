@@ -484,6 +484,81 @@ int performTests()
 		}
 	}
 
+	/**
+	 * Misc test
+	 */
+
+	pagedata = R"END(
+{{Infobox settlement
+|official_name =Junabad
+|native_name =جون اباد
+|settlement_type        = village
+|coordinates_region     = IR
+|subdivision_type       = [[List of countries|Country]]
+|subdivision_name = {{flag|Iran}}
+|subdivision_type1 =[[Provinces of Iran|Province]]
+|subdivision_name1 =[[Fars Province|Fars]]
+|subdivision_type2 =[[Counties of Iran|County]]
+|subdivision_name2 = [[Fasa County|Fasa]]
+|subdivision_type3 =[[Bakhsh]]
+|subdivision_name3 =[[Central District (Fasa County)|Central]]
+|subdivision_type4 =[[Rural Districts of Iran|Rural District]]
+|subdivision_name4 =[[Sahrarud Rural District|Sahrarud]]
+|leader_title           = 
+|leader_name            = 
+|established_title      =
+|established_date       = 
+|area_total_km2           = 
+|area_footnotes           = 
+|population_as_of         = 2006
+|population_total =
+|population_density_km2   =auto
+|timezone               = [[Iran Standard Time|IRST]]
+|utc_offset             = +3:30
+|timezone_DST           = [[Iran Daylight Time|IRDT]]
+|utc_offset_DST         = +4:30
+|coordinates_display      = %
+|latd=|latm=|lats=|latNS=N
+|longd=|longm=|longs=|longEW=E
+|elevation_m            = 
+|area_code              = 
+|website                = 
+|footnotes              =
+}}
+'''Junabad''' ({{lang-fa|جون اباد}}, also [[Romanize]]d as '''Jūnābād''') is a village in [[Sahrarud Rural District]], in the [[Central District (Fasa County)|Central District]] of [[Fasa County]], [[Fars Province]], [[Iran]]. At the 2006 census, its existence was noted, but its population was not reported.<ref>{{IranCensus2006|07}}</ref>  
+
+== References ==
+{{reflist}}
+
+{{Fasa County}}
+
+{{coord missing|Iran}}
+
+[[Category:Populated places in Fasa County]]
+
+{{Fasa-geo-stub}}
+)END";
+
+	mc.dest = new ostringstream();
+	mc.processPage(0, 50407944, 1, pagedata);
+	output = ((ostringstream *)mc.dest)->str();
+	delete mc.dest;
+
+	vector<string> templates;
+	string_split(output, "\n", &templates);
+
+	for (auto tmpl : templates) {
+		if (tmpl.length() == 0) continue;
+		string_split(tmpl, "\t", &splits);
+		cout << "Template id: " << splits[0] << "\n";
+
+		for (unsigned int x=2; x < splits.size(); x += 2) {
+			cout << splits[x] << " = " << splits[x+1] << "\n";
+			params[splits[x]] = splits[x+1];
+		}
+	}
+
+
 	cout << "All tests passed\n";
 	return 0;
 }
