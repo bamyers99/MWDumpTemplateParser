@@ -48,6 +48,7 @@ public:
 	int instancecount = 0;
 	map<string, int> param_name_cnt;
 	map<string, map<string, int>> param_value_cnt;
+	map<string, char> param_valid;
 };
 
 class MainClass : IPageHandler
@@ -61,7 +62,10 @@ public:
 	map<string, int> template_ids;
     ostream *dest = 0;
     map<int, TemplateInfo *> template_info;
-    map<int, bool> blacklist = {
+    static map<int, bool> blacklist;
+};
+
+map<int, bool> MainClass::blacklist = {
     	{7585648, true},  // Reflist
 		{21067859, true}, // Italic title
 		{945764, true},   // Hatnote
@@ -115,7 +119,7 @@ public:
 		{2048472, true},  // Citation needed
 		{21044097, true}  // Use dmy dates
     };
-};
+
 
 int main(int argc, char **argv) {
 	int i;
@@ -695,8 +699,39 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		++template_info[tmplid]->instancecount;
 
 		blacklisted = (blacklist.find(tmplid) != blacklist.end());
+		bool writeblacklisted = false;
 
-		if (! blacklisted) *dest << tmplid << "\t" << page_id;
+		// Determine if blacklisted template needs to be written out: invalid/deprecated/required/suggested param
+		if (blacklisted) {
+			// invalid
+			for (auto &pair : templ.params) {
+				string key = pair.first;
+				if (template_info[tmplid]->param_valid.find(key) == template_info[tmplid]->param_valid.end()) {
+					writeblacklisted = true;
+					break;
+				}
+			}
+
+			// deprecated/required/suggested
+			if (! writeblacklisted) {
+				for (auto &pair : template_info[tmplid]->param_valid) {
+					string key = pair.first;
+					char value = pair.second;
+
+					if (value == 'D' && templ.params.find(key) != templ.params.end()) {
+						writeblacklisted = true;
+						break;
+					}
+
+					if ((value == 'R' || value == 'S') && templ.params.find(key) == templ.params.end()) {
+						writeblacklisted = true;
+						break;
+					}
+				}
+			}
+		}
+
+		if (! blacklisted || writeblacklisted) *dest << tmplid << "\t" << page_id;
 
 		for (auto &pair : templ.params) {
 			string key = pair.first;
@@ -710,14 +745,15 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			++template_info[tmplid]->param_name_cnt[key];
 
 			if (template_info[tmplid]->param_value_cnt[key].size() == 50) {
-				if (! blacklisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
+				if (! blacklisted || writeblacklisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
 			} else {
 				++template_info[tmplid]->param_value_cnt[key][value];
 				if (! blacklisted) *dest << "\t" << key << "\t" << value;
+				else if (writeblacklisted) *dest << "\t" << key << "\t";
 			}
 		}
 
-		if (! blacklisted) *dest << "\n";
+		if (! blacklisted || writeblacklisted) *dest << "\n";
 	}
 }
 
@@ -735,12 +771,21 @@ void MainClass::loadTemplateIds()
 
 	while (source.good()) {
 		getline(source, line);
+
 		if (line.length()) {
 			string_split(line, "\t", &pieces);
 			string name(pieces[0]);
 			int id = stoi(pieces[1]);
 			template_ids[name] = id;
 			if (template_info.find(id) == template_info.end()) template_info[id] = new TemplateInfo();
+
+			// Load the parameter names/validity
+			if (pieces.size() > 2) {
+				for (unsigned int i = 2; i < pieces.size(); i += 2) {
+					char validity = pieces[i + 1][0];
+					template_info[id]->param_valid[pieces[i]] = validity;
+				}
+			}
 		}
 	}
 }
@@ -783,6 +828,7 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
 
 int calcOffsets(string infilepath, string outfilepath)
 {
+	bool blacklisted;
     istream *source;
     if (infilepath == "-") {
     	source = &cin;
@@ -805,19 +851,26 @@ int calcOffsets(string infilepath, string outfilepath)
     	}
     }
 
-    string prevTemplID("");
+    string prevTemplID;
 	string line;
 	vector<string> pieces;
 
 	while (source->good()) {
 		long long offset = source->tellg();
+
 		getline(*source, line);
+
 		if (line.length()) {
 			string_split(line, "\t", &pieces);
 			string templID(pieces[0]);
 
 			if (templID != prevTemplID) {
-				*dest << templID << "\t" << offset << "\n";
+				int tmplid = atoi(templID.c_str());
+				blacklisted = (MainClass::blacklist.find(tmplid) != MainClass::blacklist.end());
+				string blsign;
+				if (blacklisted) blsign = "-";
+
+				*dest << templID << "\t" << blsign << offset << "\n";
 			}
 
 			prevTemplID = templID;
