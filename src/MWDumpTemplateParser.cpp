@@ -117,6 +117,10 @@ map<int, bool> MainClass::blacklist = {
 		{2075417, true},  // Flagicon
 		{1695548, true},  // Flag
 		{2048472, true},  // Citation needed
+		{134352, true},   // Infobox football biography
+		{3029961, true},  // Football squad player
+		{1406921, true},  // Infobox settlement
+		{3382507, true},  // Infobox person
 		{21044097, true}  // Use dmy dates
     };
 
