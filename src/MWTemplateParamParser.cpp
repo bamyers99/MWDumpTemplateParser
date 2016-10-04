@@ -26,6 +26,7 @@ namespace phppreg {
 
 map<string, PhpPreg> MWTemplateParamParser::regexs = {
 		{"passed_param" , PhpPreg("!\\{\\{\\{(?P<content>[^{}]*?\\}\\}\\})!")}, // Highest priority
+		{"htmlstub" , PhpPreg("!<\\s*(?P<content>[\\w]+(?:(?:\\s+\\w+(?:\\s*=\\s*(?:\"[^\"]*+\"|'[^']*+'|[^'\">\\s]+))?)+\\s*|\\s*)/>)!")},
 		{"html" , PhpPreg("!<\\s*(?P<content>(?P<tag>[\\w]+)[^>]*>[^<]*?<\\s*/\\s*(?P=tag)\\s*>)!")},
 		{"template" , PhpPreg("!\\{\\{\\s*(?P<content>(?P<name>[^{}\\|]+?)(?:\\|(?P<params>[^{}]+?))?\\}\\})!")},
 		{"table" , PhpPreg("!\\{\\|(?P<content>[^{]*?\\|\\})!")},
@@ -34,7 +35,7 @@ map<string, PhpPreg> MWTemplateParamParser::regexs = {
 
 const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
 PhpPreg MWTemplateParamParser::COMMENT_REGEX("/<!--.*?-->/us");
-PhpPreg MWTemplateParamParser::MARKER_REGEX("!\v\\d+\f!");
+PhpPreg MWTemplateParamParser::MARKER_REGEX("!\\x02\\d+\\x03!");
 
 /**
  * Get template names and parameters in a string.
@@ -94,7 +95,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 
 						// Replace the match with a marker
 						ostringstream oss;
-						oss << "\v" << markers.size() << "\f";
+						oss << "\x02" << markers.size() << "\x03";
 						marker_id = oss.str();
 						string content = match->at(0)->text;
 						content_len = content.length();

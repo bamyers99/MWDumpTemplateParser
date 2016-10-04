@@ -364,6 +364,7 @@ int performTests()
 	// getTemplates
 	vector<MWTemplate> results;
 	string origdata = " \
+		{{Nihongo|Cindy Aurum|シドニー・オールム|Shidonī Ōrumu|'Cidney'<ref name= 'SilMoogle'/>}} \
 		{{Infobox_person \
 		|name = [[Fred]] <!-- some comment --> \
 		|birth_date={{birth date|1984|12|13}} \
@@ -376,7 +377,7 @@ int performTests()
 		";
 	MWTemplateParamParser::getTemplates(&results, origdata);
 
-	if (results.size() != 4) {
+	if (results.size() != 5) {
 		cout << "MWTemplateParamParser::getTemplates failed\n";
 		return 25;
 	}
@@ -406,9 +407,16 @@ int performTests()
 				return 29;
 			}
 
+		} else if (tmpl.name == "Nihongo") {
+			if (tmpl.params["1"] != "Cindy Aurum" || tmpl.params["2"] != "シドニー・オールム" || tmpl.params["3"] != "Shidonī Ōrumu"
+					|| tmpl.params["4"] != "'Cidney'<ref name= 'SilMoogle'/>") {
+				cout << "Template Nihongo failed\n";
+				return 30;
+			}
+
 		} else {
 			cout << "MWTemplateParamParser::getTemplates failed unknown tmpl.name = " << tmpl.name << "\n";
-			return 30;
+			return 31;
 		}
 	}
 
@@ -420,7 +428,7 @@ int performTests()
 	int retval = mc.parseTemplates(infilepath, outfilepath, totalsoutfilepath);
 	if (retval) {
 		cout << "parseTemplates failed = " << retval << "\n";
-		return 31;
+		return 32;
 	}
 
 	/**
@@ -432,7 +440,7 @@ int performTests()
 	retval = calcOffsets(infilepath, outfilepath);
 	if (retval) {
 		cout << "calcOffsets failed = " << retval << "\n";
-		return 32;
+		return 33;
 	}
 
 	/**
@@ -468,7 +476,7 @@ int performTests()
 
 	if (splits[0] != "4592538" || splits[1] != "113") {
 		cout << "processPage failed, wrong template id or page id\n";
-		return 33;
+		return 34;
 	}
 
 	map<string, string> params;
@@ -484,11 +492,11 @@ int performTests()
 		auto it = params.find(param.first);
 		if (param.second && it == params.end()) {
 			cout << "processPage failed, missing param " << param.first <<"\n";
-			return 34;
+			return 35;
 		}
 		if (! param.second && it != params.end()) {
 			cout << "processPage failed, extra param " << param.first <<"\n";
-			return 35;
+			return 36;
 		}
 	}
 
