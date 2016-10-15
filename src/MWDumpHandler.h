@@ -16,7 +16,8 @@ namespace phppreg {
 class IPageHandler
 {
 public:
-	virtual void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data) = 0;
+	virtual void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data,
+		const std::string& page_title) = 0;
 	virtual ~IPageHandler() {}
 };
 
@@ -34,6 +35,7 @@ protected:
 	std::string page_id;
 	std::string revision_id;
 	std::string page_data;
+	std::string page_title;
 	IPageHandler& pageHandler;
 	std::string container;
 	std::string element;

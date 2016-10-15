@@ -34,8 +34,9 @@ void MWDumpHandler::endElement(void *userData, const char *el)
 			int mwn = atoi(mwnamespace.c_str());
 			unsigned int pid = atoi(page_id.c_str());
 			unsigned int rid = atoi(revision_id.c_str());
-			if (! isRedirect) pageHandler.processPage(mwn, pid, rid, page_data);
+			if (! isRedirect) pageHandler.processPage(mwn, pid, rid, page_data, page_title);
 			container.clear(); element.clear(); page_id.clear(); mwnamespace.clear(); page_data.clear(); revision_id.clear(); isRedirect = false;
+			page_title.clear();
 		}
 	}
 
@@ -52,6 +53,7 @@ void MWDumpHandler::characters(void *userData, const XML_Char *s, int len)
 	if (container == "page") {
 		if (element == "ns") mwnamespace.append((char *)s, len);
 		else if (element == "id") page_id.append((char *)s, len);
+		else if (element == "title") page_title.append((char *)s, len);
 	}
 
 	else if (container == "revision") {

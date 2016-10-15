@@ -20,6 +20,7 @@
 #include <string.h>
 #include <memory>
 #include <sstream>
+#include <set>
 #include "PregMatch.h"
 #include "PhpPreg.h"
 #include "MWDumpHandler.h"
@@ -33,12 +34,15 @@ using namespace phppreg;
 
 int performTests();
 int calcOffsets(string infilepath, string outfilepath);
+int dumpValues(string infilepath, string outfilepath, string templatenames, bool verbose);
 
 /**
  * Sample usage:
  * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v - enwikiTemplateParams enwikiTemplateTotals&
  * LC_ALL=C sort -n -k 1,1 -k 2,2 enwikiTemplateParams >enwikiTemplateParams.sorted
  * ./MWDumpTemplateParser -offsets enwikiTemplateParams.sorted enwikiTemplateOffsets
+ *
+ * bunzip2 -c *pages-articles.xml.bz2 | ./MWDumpTemplateParser -v -values - enwiki "IMDb name;IMDB name"&
  */
 
 class TemplateInfo
@@ -55,7 +59,7 @@ class MainClass : IPageHandler
 {
 public:
 	int parseTemplates(const string& infilepath, const string& outfilepath, const string& totalsoutfilepath);
-	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data);
+	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data, const std::string& page_title);
 	void loadTemplateIds();
 	void writeTotals(const string& totalsoutfilepath);
 	bool verbose = false;
@@ -130,22 +134,25 @@ int main(int argc, char **argv) {
 	bool testmode = false;
 	bool verbose = false;
 	bool calcoffsets = false;
+	bool dumpvalues = false;
 
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-v") == 0) verbose = true;
 		else if (strcmp(argv[i], "-t") == 0) testmode = true;
 		else if (strcmp(argv[i], "-offsets") == 0) calcoffsets = true;
+		else if (strcmp(argv[i], "-values") == 0) dumpvalues = true;
 		else break;
 	}
 
 	if ((! calcoffsets && argc - i != 3) || (calcoffsets && argc - i != 2)) {
-		cout << "Usage: MWDumpTemplateParser [-v] [-t] [-offsets] [infilepath|-] [outfilepath|-] [totals outfilepath|-]\n";
+		cout << "Usage: MWDumpTemplateParser [-v] [-t] [-offsets] [infilepath|-] [outfilepath|-] [totals outfilepath|values template name(s)|-]\n";
 		cout << "\t -v: verbose\n";
 		cout << "\t -t: testmode\n";
 		cout << "\t -offsets: calc template start offsets\n";
+		cout << "\t -values: dump template parameter values\n";
 		cout << "\t [infilepath|-]: input file path or - for stdin\n";
 		cout << "\t [outfilepath|-]: output file path or - for stdout\n";
-		cout << "\t [totals outfilepath|-]: totals output file path or - for stderr\n";
+		cout << "\t [totals outfilepath|values template name(s)|-]: totals output file path or values template name(s) (separated by ;) or - for stderr\n";
 		return 1;
 	}
 
@@ -158,6 +165,8 @@ int main(int argc, char **argv) {
 		return performTests();
 	} else if (calcoffsets) {
 		return calcOffsets(infilepath, outfilepath);
+	} else if (dumpvalues) {
+		return dumpValues(infilepath, outfilepath, totalsoutfilepath, verbose);
 	}
 
 	MainClass mc;
@@ -468,7 +477,7 @@ int performTests()
 }}";
 
 	mc.dest = new ostringstream();
-	mc.processPage(0, 113, 1, pagedata);
+	mc.processPage(0, 113, 1, pagedata, "Gianluca Grignani");
 	string output = ((ostringstream *)mc.dest)->str();
 	delete mc.dest;
 
@@ -556,7 +565,7 @@ int performTests()
 )END";
 
 	mc.dest = new ostringstream();
-	mc.processPage(0, 50407944, 1, pagedata);
+	mc.processPage(0, 50407944, 1, pagedata, "Junabad");
 	output = ((ostringstream *)mc.dest)->str();
 	delete mc.dest;
 
@@ -574,6 +583,17 @@ int performTests()
 		}
 	}
 
+	/**
+	 * dumpValues test
+	 */
+
+	infilepath = "MWDumpTest.xml";
+	outfilepath = "-";
+	retval = dumpValues(infilepath, outfilepath, "Infobox person;Infobox Person", true);
+	if (retval) {
+		cout << "dumpValues failed = " << retval << "\n";
+		return 37;
+	}
 
 	cout << "All tests passed\n";
 	return 0;
@@ -675,7 +695,7 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
 	return 0;
 }
 
-void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, const std::string& page_data)
+void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, const std::string& page_data, const std::string& page_title)
 {
 	static int pagecnt = 0;
 
@@ -889,6 +909,193 @@ int calcOffsets(string infilepath, string outfilepath)
 		}
 	}
 
+    if (outfilepath != "-") delete dest;
+
+	return 0;
+}
+
+class ValuesHandler : public IPageHandler
+{
+public:
+	bool verbose;
+	set<string> templatenames;
+	void processPage(int mwnamespace, unsigned int page_id, unsigned int revision_id, const std::string& page_data, const std::string& page_title);
+	map<string, map<string, map<string, string>>> param_values; // pagename, template name, parameter name, parameter value
+};
+
+void ValuesHandler::processPage(int ns, unsigned int page_id, unsigned int revid, const std::string& page_data, const std::string& page_title)
+{
+	static int pagecnt = 0;
+
+	if (ns != 0) return; // only want articles
+	++pagecnt;
+	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
+
+	// Parse the templates
+	vector<MWTemplate> templates;
+	MWTemplateParamParser::getTemplates(&templates, page_data);
+	map<string, int> pagetemplates;
+
+	for (auto &templ : templates) {
+		if (templatenames.find(templ.name) == templatenames.end()) continue;
+
+		// Fancy code to erase map elements while iterating the map
+		for (map<string,string>::iterator it=templ.params.begin(), it_next=it, it_end=templ.params.end();
+		    it != it_end;
+		    it = it_next)
+		{
+			++it_next;
+			if (it->second.length() == 0) templ.params.erase(it);
+		}
+
+		if (templ.params.empty()) continue;
+
+		++pagetemplates[templ.name];
+		string temptmplname = templ.name;
+
+		if (pagetemplates[templ.name] > 1) temptmplname += "{" + to_string(pagetemplates[templ.name]) + "}";
+
+		for (auto &pair : templ.params) {
+			string key = pair.first;
+			string& value = pair.second;
+			for (auto &achar : key) if (achar == '\n' || achar == '\t') achar = ' '; // Don't want tabs/newlines in csv file
+			for (auto &achar : value) if (achar == '\n' || achar == '\t') achar = ' ';
+			if (key.length() > 255) key.erase(255);
+			if (value.length() > 255) value.erase(255);
+
+			param_values[page_title][temptmplname][key] = value;
+		}
+	}
+
+}
+
+int dumpValues(string infilepath, string outfilepath, string templatenames, bool verbose)
+{
+	// Check for single byte xml characters for utf8 internal data
+	const XML_Feature *fl = XML_GetFeatureList();
+	if (fl->feature != XML_FEATURE_SIZEOF_XML_CHAR || fl->value != 1) {
+		cerr << "expat not compiled for single byte xml characters\n";
+		return 1;
+	}
+
+	XML_Parser p = XML_ParserCreate("UTF-8");
+	if (! p) {
+		cerr << "Couldn't allocate memory for parser\n";
+	    return 2;
+	}
+
+	XML_SetElementHandler(p, startElement, endElement);
+	XML_SetCharacterDataHandler(p, characters);
+
+	vector<string> temptemplates;
+	string_split(templatenames, ";", &temptemplates);
+	string maintemplate = temptemplates[0];
+	set<string> templates(temptemplates.begin(), temptemplates.end());
+
+	ValuesHandler vh;
+	vh.verbose = verbose;
+	vh.templatenames = templates;
+    MWDumpHandler defaultHandler(vh);
+    mwdh = &defaultHandler;
+
+    istream *source;
+    if (infilepath == "-") {
+    	source = &cin;
+    } else {
+    	source = new ifstream(infilepath.c_str(), ios::in|ios::binary);
+    	if (source->fail()) {
+    	    cerr << "new ifstream failed for " << infilepath << "\n";
+    	    return 3;
+    	}
+    }
+
+	int bytes_read;
+	char *buff;
+
+    for (;;) {
+    	buff = (char *)XML_GetBuffer(p, 2048);
+    	if (buff == NULL) {
+    	    cerr << "XML_GetBuffer failed\n";
+    	    return 5;
+    	}
+
+    	source->read(buff, 2048);
+    	if (source->fail() && ! source->eof()) {
+			cerr << "source->read failed\n";
+			return 6;
+    	}
+    	bytes_read = source->gcount();
+
+    	if (bytes_read >= 0) {
+    		if (! XML_ParseBuffer(p, bytes_read, source->eof())) {
+    			cerr << "XML_ParseBuffer failed\n";
+    			return 7;
+    		}
+    	}
+
+    	if (source->eof()) break;
+    }
+
+    XML_ParserFree(p);
+
+    ostream *dest;
+    if (outfilepath == "-") {
+    	dest = &cout;
+    } else {
+    	string outfilename = maintemplate;
+    	string_replace(&outfilename, " ", "_");
+
+    	dest = new ofstream(outfilepath + "_" + outfilename + ".tsv", ios::out|ios::binary|ios::trunc);
+    	if (dest->fail()) {
+    	    cerr << "new ofstream failed for " << outfilepath << "\n";
+    	    return 4;
+    	}
+    }
+
+	// Determine the parameter names used
+	set<string> paramnames;
+	for (auto &pair : vh.param_values) {
+		for (auto &pair2 : pair.second) {
+			for (auto &pair3 : pair2.second) {
+				paramnames.insert(pair3.first);
+			}
+		}
+	}
+
+    // write the header
+    *dest << "pagename" << "\t" << "templatename";
+
+    for (auto &paramname : paramnames) {
+    	*dest << "\t" << paramname;
+    }
+
+    *dest << "\n";
+
+	for (auto &pair : vh.param_values) {
+		string pagename = pair.first;
+
+		for (auto &pair2 : pair.second) {
+			string temptmplname = pair2.first;
+			// strip occurrence number
+			PhpPreg phpPreg("!^([^{]+)(?:\\{\\d+\\})?$!");
+			MatchVector mv;
+			phpPreg.match(temptmplname, &mv);
+			temptmplname = mv[1]->text;
+
+			*dest << pagename << "\t" << temptmplname;
+
+			for (auto &paramname : paramnames) {
+				string paramvalue;
+				if (pair2.second.find(paramname) == pair2.second.end()) paramvalue = "";
+				else paramvalue = pair2.second[paramname];
+				*dest << "\t" << paramvalue;
+			}
+
+			*dest << "\n";
+		}
+	}
+
+    if (infilepath != "-") delete source;
     if (outfilepath != "-") delete dest;
 
 	return 0;
