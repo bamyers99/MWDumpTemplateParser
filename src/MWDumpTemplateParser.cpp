@@ -21,6 +21,7 @@
 #include <memory>
 #include <sstream>
 #include <set>
+#include <algorithm>
 #include "PregMatch.h"
 #include "PhpPreg.h"
 #include "MWDumpHandler.h"
@@ -53,6 +54,9 @@ public:
 	map<string, int> param_name_cnt;
 	map<string, map<string, int>> param_value_cnt;
 	map<string, char> param_valid;
+	map<string, char> param_validation;
+	map<string, PhpPreg *> param_validation_regex;
+	map<string, set<string> *> param_validation_values;
 };
 
 class MainClass : IPageHandler
@@ -67,6 +71,7 @@ public:
     ostream *dest = 0;
     map<int, TemplateInfo *> template_info;
     static map<int, bool> blacklist;
+    static set<string> yesno;
 };
 
 map<int, bool> MainClass::blacklist = {
@@ -128,6 +133,10 @@ map<int, bool> MainClass::blacklist = {
 		{21044097, true}  // Use dmy dates
     };
 
+set<string> MainClass::yesno = {
+		"yes", "y", "true", "1",
+		"no", "n", "false", "0"
+};
 
 int main(int argc, char **argv) {
 	int i;
@@ -733,9 +742,9 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		blacklisted = (blacklist.find(tmplid) != blacklist.end());
 		bool writeblacklisted = false;
 
-		// Determine if blacklisted template needs to be written out: invalid/deprecated/required/suggested param
+		// Determine if blacklisted template needs to be written out: unknown/deprecated/required/suggested param
 		if (blacklisted) {
-			// invalid
+			// unknown
 			for (auto &pair : templ.params) {
 				string key = pair.first;
 				if (template_info[tmplid]->param_valid.find(key) == template_info[tmplid]->param_valid.end()) {
@@ -763,7 +772,36 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			}
 		}
 
-		if (! blacklisted || writeblacklisted) *dest << tmplid << "\t" << page_id;
+		// Value validation
+		bool writevaliderror = false;
+
+		for (auto &pair : templ.params) {
+			string key = pair.first;
+			string value = pair.second;
+			if (template_info[tmplid]->param_validation.find(key) == template_info[tmplid]->param_validation.end()) continue;
+			if (value.length() == 0) continue;
+			char validation_type = template_info[tmplid]->param_validation[key];
+
+			switch (validation_type) {
+				case 'Y':
+					transform(value.begin(), value.end(), value.begin(), ::tolower);
+					if (yesno.find(value) == yesno.end()) writevaliderror = true;
+					break;
+
+				case 'R':
+					if (! template_info[tmplid]->param_validation_regex[key]->match(value)) writevaliderror = true;
+					break;
+
+				case 'V':
+					if (template_info[tmplid]->param_validation_values.find(value) ==
+						template_info[tmplid]->param_validation_values.end()) writevaliderror = true;
+					break;
+			}
+
+			if (writevaliderror) break;
+		}
+
+		if (! blacklisted || writeblacklisted || writevaliderror) *dest << tmplid << "\t" << page_id;
 
 		for (auto &pair : templ.params) {
 			string key = pair.first;
@@ -776,16 +814,16 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			// Calc unique values
 			++template_info[tmplid]->param_name_cnt[key];
 
-			if (template_info[tmplid]->param_value_cnt[key].size() == 50) {
+			if (template_info[tmplid]->param_value_cnt[key].size() == 50 && ! writevaliderror) {
 				if (! blacklisted || writeblacklisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
 			} else {
-				++template_info[tmplid]->param_value_cnt[key][value];
-				if (! blacklisted) *dest << "\t" << key << "\t" << value;
+				if (template_info[tmplid]->param_value_cnt[key].size() < 50) ++template_info[tmplid]->param_value_cnt[key][value];
+				if (! blacklisted || writevaliderror) *dest << "\t" << key << "\t" << value;
 				else if (writeblacklisted) *dest << "\t" << key << "\t";
 			}
 		}
 
-		if (! blacklisted || writeblacklisted) *dest << "\n";
+		if (! blacklisted || writeblacklisted || writevaliderror) *dest << "\n";
 	}
 }
 
@@ -813,9 +851,21 @@ void MainClass::loadTemplateIds()
 
 			// Load the parameter names/validity
 			if (pieces.size() > 2) {
-				for (unsigned int i = 2; i < pieces.size(); i += 2) {
-					char validity = pieces[i + 1][0];
-					template_info[id]->param_valid[pieces[i]] = validity;
+				for (unsigned int i = 2; i < pieces.size(); i += 3) {
+					template_info[id]->param_valid[pieces[i]] = pieces[i + 1][0];
+					char validation = pieces[i + 2][0];
+					template_info[id]->param_validation[pieces[i]] = validation;
+
+					if (validation == 'R') {
+						string regex = "!^" + pieces[i + 3] + "$!u";
+						template_info[id]->param_validation_regex[pieces[i]] = new PhpPreg(regex);
+						++i;
+					} else if (validation == 'V') {
+						vector<string> values;
+						string_split(pieces[i + 3], "|", &values);
+						template_info[id]->param_validation_values[pieces[i]] = new set<string>(values.begin(), values.end());
+						++i;
+					}
 				}
 			}
 		}
