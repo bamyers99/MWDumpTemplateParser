@@ -82,6 +82,7 @@ map<int, bool> MainClass::blacklist = {
 		{3218295, true},  // Col-begin
 		{3218301, true},  // Col-end
     	{4148498, true},  // Cite web
+    	{1252907, true},  // Cite web (from merge)
 		{4321630, true},  // Cite news
 		{4086375, true},  // Cite book
 		{8387047, true},  // Convert
