@@ -393,6 +393,7 @@ int performTests()
 		|- \
 		|abc {{{2}}} {{sort|ABC}} \
 		|} \
+	    {{math|''g'' : [[interval (mathematics)#Infinite endpoints|(−∞,+9] or [0,+∞)]] → ℝ}} \
 		";
 	MWTemplateParamParser::getTemplates(&results, origdata);
 
@@ -433,9 +434,15 @@ int performTests()
 				return 30;
 			}
 
+		} else if (tmpl.name == "Math") {
+			if (tmpl.params["1"] != "''g'' : [[interval (mathematics)#Infinite endpoints|(−∞,+9] or [0,+∞)]] → ℝ") {
+				cout << "Template Math failed\n";
+				return 31;
+			}
+
 		} else {
 			cout << "MWTemplateParamParser::getTemplates failed unknown tmpl.name = " << tmpl.name << "\n";
-			return 31;
+			return 32;
 		}
 	}
 
@@ -447,7 +454,7 @@ int performTests()
 	int retval = mc.parseTemplates(infilepath, outfilepath, totalsoutfilepath);
 	if (retval) {
 		cout << "parseTemplates failed = " << retval << "\n";
-		return 32;
+		return 33;
 	}
 
 	/**
@@ -459,7 +466,7 @@ int performTests()
 	retval = calcOffsets(infilepath, outfilepath);
 	if (retval) {
 		cout << "calcOffsets failed = " << retval << "\n";
-		return 33;
+		return 34;
 	}
 
 	/**
@@ -495,7 +502,7 @@ int performTests()
 
 	if (splits[0] != "4592538" || splits[1] != "113") {
 		cout << "processPage failed, wrong template id or page id\n";
-		return 34;
+		return 35;
 	}
 
 	map<string, string> params;
@@ -511,11 +518,11 @@ int performTests()
 		auto it = params.find(param.first);
 		if (param.second && it == params.end()) {
 			cout << "processPage failed, missing param " << param.first <<"\n";
-			return 35;
+			return 36;
 		}
 		if (! param.second && it != params.end()) {
 			cout << "processPage failed, extra param " << param.first <<"\n";
-			return 36;
+			return 37;
 		}
 	}
 
@@ -602,7 +609,7 @@ int performTests()
 	retval = dumpValues(infilepath, outfilepath, "Infobox person;Infobox Person", true);
 	if (retval) {
 		cout << "dumpValues failed = " << retval << "\n";
-		return 37;
+		return 38;
 	}
 
 	cout << "All tests passed\n";
