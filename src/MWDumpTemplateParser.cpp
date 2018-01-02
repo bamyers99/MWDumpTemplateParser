@@ -772,7 +772,8 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 						break;
 					}
 
-					if ((value == 'R' || value == 'S') && templ.params.find(key) == templ.params.end()) {
+					// Don't check suggested because generates too many, ie. Cite book
+					if (value == 'R' && templ.params.find(key) == templ.params.end()) {
 						writeblacklisted = true;
 						break;
 					}
