@@ -30,7 +30,7 @@ map<string, PhpPreg> MWTemplateParamParser::regexs = {
 		{"html" , PhpPreg("!<\\s*(?P<content>(?P<tag>[\\w]+)[^>]*>[^<]*?<\\s*/\\s*(?P=tag)\\s*>)!")},
 		{"template" , PhpPreg("!\\{\\{\\s*(?P<content>(?P<name>[^{}\\|]+?)(?:\\|(?P<params>[^{}]+?))?\\}\\})!")},
 		{"table" , PhpPreg("!\\{\\|(?P<content>[^{]*?\\|\\})!")},
-		{"link" , PhpPreg("/\\[\\[(?P<content>(?:.(?!\\[\\[))+?\\]\\])/")}
+		{"link" , PhpPreg("/\\[\\[(?P<content>(?:.(?!\\[\\[))+?\\]\\])/s")}
 };
 
 const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
