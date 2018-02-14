@@ -57,6 +57,7 @@ public:
 	map<string, char> param_validation;
 	map<string, PhpPreg *> param_validation_regex;
 	map<string, set<string> *> param_validation_values;
+	map<string, string> param_aliases;
 };
 
 class MainClass : IPageHandler
@@ -397,7 +398,7 @@ int performTests()
 		";
 	MWTemplateParamParser::getTemplates(&results, origdata);
 
-	if (results.size() != 5) {
+	if (results.size() != 6) {
 		cout << "MWTemplateParamParser::getTemplates failed\n";
 		return 25;
 	}
@@ -477,7 +478,7 @@ int performTests()
 | name = Gianluca Grignani\
 | image = Gianluca Grignani - Fonte Nuova 31-05-08.JPG\
 | caption = Gianluca Grignani (2008)\
-| background = solo_singer\
+| Background = solo_singer\
 | birth_date = {{birth date and age|1972|04|07|df=y}}\
 | origin= [[Milan]], Italy\
 | instrument = Vocals, guitar, piano\
@@ -593,6 +594,32 @@ int performTests()
 		if (tmpl.length() == 0) continue;
 		string_split(tmpl, "\t", &splits);
 		cout << "Template id: " << splits[0] << "\n";
+
+		for (unsigned int x=2; x < splits.size(); x += 2) {
+			cout << splits[x] << " = " << splits[x+1] << "\n";
+			params[splits[x]] = splits[x+1];
+		}
+	}
+
+	/**
+	 * Misc test 2 - there should be no output because cite web is blacklisted
+	 */
+
+	pagedata = R"END(
+<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) &ndash; TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref>
+)END";
+
+	mc.dest = new ostringstream();
+	mc.processPage(0, 19036667, 1, pagedata, "Ruda Różaniecka");
+	output = ((ostringstream *)mc.dest)->str();
+	delete mc.dest;
+
+	string_split(output, "\n", &templates);
+
+	for (auto tmpl : templates) {
+		if (tmpl.length() == 0) continue;
+		string_split(tmpl, "\t", &splits);
+		cout << "Template id: " << splits[0] << " Page id:" << splits[1] << "\n";
 
 		for (unsigned int x=2; x < splits.size(); x += 2) {
 			cout << splits[x] << " = " << splits[x+1] << "\n";
@@ -730,17 +757,19 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 	for (auto &templ : templates) {
 		if (template_ids.find(templ.name) == template_ids.end()) continue;
 		tmplid = template_ids[templ.name];
+		map<string, string> templ_params;
 
-		// Fancy code to erase map elements while iterating the map
-		for (map<string,string>::iterator it=templ.params.begin(), it_next=it, it_end=templ.params.end();
-		    it != it_end;
-		    it = it_next)
-		{
-			++it_next;
-			if (it->second.length() == 0) templ.params.erase(it);
+		for (auto &pair : templ.params) {
+			if (pair.second.length() == 0) continue;
+			string unaliased_name = pair.first;
+			if (template_info[tmplid]->param_aliases.find(unaliased_name) != template_info[tmplid]->param_aliases.end()) {
+				unaliased_name = template_info[tmplid]->param_aliases.find(unaliased_name)->second;
+			}
+
+			templ_params[unaliased_name] = pair.second;
 		}
 
-		if (templ.params.empty()) continue;
+		if (templ_params.empty()) continue;
 
 		++pagetemplates[tmplid];
 
@@ -753,7 +782,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		// Determine if blacklisted template needs to be written out: unknown/deprecated/required/suggested param
 		if (blacklisted) {
 			// unknown
-			for (auto &pair : templ.params) {
+			for (auto &pair : templ_params) {
 				string key = pair.first;
 				if (template_info[tmplid]->param_valid.find(key) == template_info[tmplid]->param_valid.end()) {
 					writeblacklisted = true;
@@ -767,13 +796,13 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 					string key = pair.first;
 					char value = pair.second;
 
-					if (value == 'D' && templ.params.find(key) != templ.params.end()) {
+					if (value == 'D' && templ_params.find(key) != templ_params.end()) {
 						writeblacklisted = true;
 						break;
 					}
 
 					// Don't check suggested because generates too many, ie. Cite book
-					if (value == 'R' && templ.params.find(key) == templ.params.end()) {
+					if (value == 'R' && templ_params.find(key) == templ_params.end()) {
 						writeblacklisted = true;
 						break;
 					}
@@ -784,7 +813,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		// Value validation
 		bool writevaliderror = false;
 
-		for (auto &pair : templ.params) {
+		for (auto &pair : templ_params) {
 			string key = pair.first;
 			string value = pair.second;
 			if (template_info[tmplid]->param_validation.find(key) == template_info[tmplid]->param_validation.end()) continue;
@@ -802,8 +831,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 					break;
 
 				case 'V':
-					if (template_info[tmplid]->param_validation_values.find(value) ==
-						template_info[tmplid]->param_validation_values.end()) writevaliderror = true;
+					if (template_info[tmplid]->param_validation_values[key]->find(value) == template_info[tmplid]->param_validation_values[key]->end()) writevaliderror = true;
 					break;
 			}
 
@@ -812,7 +840,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 
 		if (! blacklisted || writeblacklisted || writevaliderror) *dest << tmplid << "\t" << page_id;
 
-		for (auto &pair : templ.params) {
+		for (auto &pair : templ_params) {
 			string key = pair.first;
 			string& value = pair.second;
 			for (auto &achar : key) if (achar == '\n' || achar == '\t') achar = ' '; // Don't want tabs/newlines in csv file
@@ -861,18 +889,27 @@ void MainClass::loadTemplateIds()
 			// Load the parameter names/validity
 			if (pieces.size() > 2) {
 				for (unsigned int i = 2; i < pieces.size(); i += 3) {
-					template_info[id]->param_valid[pieces[i]] = pieces[i + 1][0];
+					vector<string> aliases;
+					string_split(pieces[i], "|", &aliases);
+
+					template_info[id]->param_valid[aliases[0]] = pieces[i + 1][0];
+					if (aliases.size() > 1) {
+						for (unsigned int j = 1; j < aliases.size(); ++j) {
+							template_info[id]->param_aliases[aliases[j]] = aliases[0];
+						}
+					}
+
 					char validation = pieces[i + 2][0];
-					template_info[id]->param_validation[pieces[i]] = validation;
+					template_info[id]->param_validation[aliases[0]] = validation;
 
 					if (validation == 'R') {
 						string regex = "!^" + pieces[i + 3] + "$!u";
-						template_info[id]->param_validation_regex[pieces[i]] = new PhpPreg(regex);
+						template_info[id]->param_validation_regex[aliases[0]] = new PhpPreg(regex);
 						++i;
 					} else if (validation == 'V') {
 						vector<string> values;
 						string_split(pieces[i + 3], "|", &values);
-						template_info[id]->param_validation_values[pieces[i]] = new set<string>(values.begin(), values.end());
+						template_info[id]->param_validation_values[aliases[0]] = new set<string>(values.begin(), values.end());
 						++i;
 					}
 				}
