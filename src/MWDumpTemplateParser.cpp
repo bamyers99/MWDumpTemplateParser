@@ -71,11 +71,13 @@ public:
 	map<string, int> template_ids;
     ostream *dest = 0;
     map<int, TemplateInfo *> template_info;
-    static map<int, bool> blacklist;
+    static map<string, map<int, bool>> blacklists;
+    map<int, bool> *blacklist;
     static set<string> yesno;
+    string wikiProject;
 };
 
-map<int, bool> MainClass::blacklist = {
+map<string, map<int, bool>> MainClass::blacklists = {{"enwiki" , {
     	{7585648, true},  // Reflist
 		{21067859, true}, // Italic title
 		{945764, true},   // Hatnote
@@ -133,7 +135,44 @@ map<int, bool> MainClass::blacklist = {
 		{1406921, true},  // Infobox settlement
 		{3382507, true},  // Infobox person
 		{21044097, true}  // Use dmy dates
-    };
+    }},
+		{"commonswiki", {
+				{7918118, true},	// ISOyear
+				{5787005, true},	// ISOdate
+				{18318095, true},	// Years since
+				{576289, true},		// Information
+				{611438, true},		// Lang
+				{163449, true},		// Description
+				{6296689, true},	// LangSwitch
+				{55980, true},		// En
+				{171728, true},		// Self
+				{725700, true},		// Location
+				{1706714, true},	// Cc-by-sa-3.0
+				{29871557, true},	// Cc-by-sa-4.0
+				{12369975, true},	// Smartlink
+				{163537, true},		// De
+				{28, true},			// GFDL
+				{9952, true},		// Cc-by-sa-2.0
+				{1017819, true},	// U
+				{63642011, true},	// FlickreviewR
+				{9951, true},		// Cc-by-2.0
+				{7554927, true},	// City
+				{3288338, true},	// Object location
+				{1706773, true},	// Cc-by-3.0
+				{163138, true},		// Fr
+				{4037295, true},	// Cc-zero
+				{6397443, true},	// Other date
+				{11207720, true},	// Institution
+				{7671128, true},	// Panoramioreview
+				{7312082, true},	// Taken on
+				{5823435, true},	// Occupation
+				{9019858, true},	// Nationality
+				{5823610, true},	// CountryAdjective
+				{146165, true},		// Artwork
+				{316780, true},		// Geograph
+				{58042, true}		// Nl
+	}}
+};
 
 set<string> MainClass::yesno = {
 		"yes", "y", "true", "1",
@@ -702,6 +741,16 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     	}
     }
 
+    // Determine the wiki project
+    unsigned int projectEnd = totalsoutfilepath.find("TemplateTotals");
+    if (projectEnd == std::string::npos) {
+    	wikiProject = "enwiki";
+    } else {
+    	wikiProject = totalsoutfilepath.substr(0, projectEnd);
+    }
+
+    blacklist = &blacklists.find(wikiProject)->second;
+
 	int bytes_read;
 	char *buff;
 
@@ -743,7 +792,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 {
 	static int pagecnt = 0;
 
-	if (ns != 0) return; // only want articles
+	if (ns != 0 && ns != 6) return; // only want articles and files
 	++pagecnt;
 	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
 
@@ -776,7 +825,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		if (pagetemplates[tmplid] == 1) ++template_info[tmplid]->pagecount;
 		++template_info[tmplid]->instancecount;
 
-		blacklisted = (blacklist.find(tmplid) != blacklist.end());
+		blacklisted = (blacklist->find(tmplid) != blacklist->end());
 		bool writeblacklisted = false;
 
 		// Determine if blacklisted template needs to be written out: unknown/deprecated/required/suggested param
@@ -979,6 +1028,18 @@ int calcOffsets(string infilepath, string outfilepath)
     	}
     }
 
+    // Determine the wiki project
+    string wikiProject;
+
+    unsigned int projectEnd = infilepath.find("TemplateParams");
+    if (projectEnd == std::string::npos) {
+    	wikiProject = "enwiki";
+    } else {
+    	wikiProject = infilepath.substr(0, projectEnd);
+    }
+
+    map<int, bool> *blacklist = &MainClass::blacklists.find(wikiProject)->second;
+
     string prevTemplID;
 	string line;
 	vector<string> pieces;
@@ -994,7 +1055,7 @@ int calcOffsets(string infilepath, string outfilepath)
 
 			if (templID != prevTemplID) {
 				int tmplid = atoi(templID.c_str());
-				blacklisted = (MainClass::blacklist.find(tmplid) != MainClass::blacklist.end());
+				blacklisted = (blacklist->find(tmplid) != blacklist->end());
 				string blsign;
 				if (blacklisted) blsign = "-";
 

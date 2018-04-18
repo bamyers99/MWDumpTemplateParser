@@ -36,6 +36,7 @@ public:
 	const static int MAX_ITERATIONS;
 	static PhpPreg COMMENT_REGEX;
 	static PhpPreg MARKER_REGEX;
+	static PhpPreg NOWIKI_REGEX;
 };
 
 } /* namespace phppreg */
