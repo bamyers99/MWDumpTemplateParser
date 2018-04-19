@@ -36,7 +36,8 @@ map<string, PhpPreg> MWTemplateParamParser::regexs = {
 const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
 PhpPreg MWTemplateParamParser::COMMENT_REGEX("/<!--.*?-->/us");
 PhpPreg MWTemplateParamParser::MARKER_REGEX("!\\x02\\d+\\x03!");
-PhpPreg MWTemplateParamParser::NOWIKI_REGEX("!<nowiki>.*?</nowiki>!usi");
+PhpPreg MWTemplateParamParser::NOWIKI_REGEX("!<\\s*nowiki\\s*>.*?<\\s*/nowiki\\s*>!usi");
+PhpPreg MWTemplateParamParser::BR_REGEX("!<\\s*br\\s*/?\\s*>!usi");
 
 /**
  * Get template names and parameters in a string.
@@ -70,6 +71,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 		string data = origdata;
 		COMMENT_REGEX.replace(&data, ""); // Strip comments
 		NOWIKI_REGEX.replace(&data, ""); // Strip nowiki
+		BR_REGEX.replace(&data, " "); // Replace BR
 
 		while (match_found) {
 			if (++itercnt > MAX_ITERATIONS) {

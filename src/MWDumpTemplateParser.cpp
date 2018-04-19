@@ -628,6 +628,7 @@ int performTests()
 
 	vector<string> templates;
 	string_split(output, "\n", &templates);
+	cout << "Misc test 1 \n";
 
 	for (auto tmpl : templates) {
 		if (tmpl.length() == 0) continue;
@@ -654,11 +655,58 @@ int performTests()
 	delete mc.dest;
 
 	string_split(output, "\n", &templates);
+	cout << "Misc test 2 - no output\n";
 
 	for (auto tmpl : templates) {
 		if (tmpl.length() == 0) continue;
 		string_split(tmpl, "\t", &splits);
 		cout << "Template id: " << splits[0] << " Page id:" << splits[1] << "\n";
+
+		for (unsigned int x=2; x < splits.size(); x += 2) {
+			cout << splits[x] << " = " << splits[x+1] << "\n";
+			params[splits[x]] = splits[x+1];
+		}
+	}
+
+	/**
+	 * Misc test 3
+	 */
+
+	pagedata = R"END(
+{{Information
+|Description = TITLE:  [Ferdinand II, King of Spain, pointing across Atlantic to where Columbus is landing with three ships amid large group of Indians]
+:CALL NUMBER:  Illus. in Rare Book Div. [Rare Book RR] 
+:REPRODUCTION NUMBER:  LC-USZ62-43535 (b&w film copy neg.) Rights status not evaluated. For general information see "Copyright and Other Restrictions..." (http://lcweb.loc.gov/rr/print/195_copr.html). 
+:MEDIUM:  1 print : woodcut. CREATED/PUBLISHED:  1493, Title page to ''Lettera delle isole novamente trovata'' by Giuliano Dati, a translation into verse of a letter from Columbus to Ferdinand of Spain. 
+:NOTES: Reference copy filed in P&P Biog. File under Fernando V. This record contains unverified, old data from caption card. Caption card tracings: Shelf. 
+:REPOSITORY:  Library of Congress Prints and Photographs Division Washington, D.C. 20540 
+:USA DIGITAL ID:  (b&w film copy neg.) cph 3a52282 http://hdl.loc.gov/loc.pnp/cph.3a52282
+:CARD #:  2003677145
+|Source      = Library of Congress ; :https://www.loc.gov/rr/print/list/080_columbus.html
+|Date        = 1493
+|Author      = {{unknown|author}}
+|Permission  = {{PD-old-100-1923}}
+{{LOC-image|id=cph.3a52282}}
+|other_versions = 
+<gallery>
+Ferdinand II, King of Spain, pointing across Atlantic to where Columbus is landing with three ships amid large group of Indians LCCN2003677145.tif|<div style="text-align:center">tif<br>1,465 × 1,536</div>
+Giuliano Dati Italienische Verse Holzschnitt.jpg
+</gallery>
+}}
+)END";
+
+	mc.dest = new ostringstream();
+	mc.processPage(0, 50407944, 1, pagedata, "Information");
+	output = ((ostringstream *)mc.dest)->str();
+	delete mc.dest;
+
+	string_split(output, "\n", &templates);
+	cout << "Misc test 3 \n";
+
+	for (auto tmpl : templates) {
+		if (tmpl.length() == 0) continue;
+		string_split(tmpl, "\t", &splits);
+		cout << "Template id: " << splits[0] << "\n";
 
 		for (unsigned int x=2; x < splits.size(); x += 2) {
 			cout << splits[x] << " = " << splits[x+1] << "\n";
@@ -742,8 +790,8 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     }
 
     // Determine the wiki project
-    unsigned int projectEnd = totalsoutfilepath.find("TemplateTotals");
-    if (projectEnd == std::string::npos) {
+    string::size_type projectEnd = totalsoutfilepath.find("TemplateTotals");
+    if (projectEnd == string::npos) {
     	wikiProject = "enwiki";
     } else {
     	wikiProject = totalsoutfilepath.substr(0, projectEnd);

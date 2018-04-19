@@ -37,6 +37,7 @@ public:
 	static PhpPreg COMMENT_REGEX;
 	static PhpPreg MARKER_REGEX;
 	static PhpPreg NOWIKI_REGEX;
+	static PhpPreg BR_REGEX;
 };
 
 } /* namespace phppreg */
