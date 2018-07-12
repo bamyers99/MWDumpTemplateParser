@@ -50,6 +50,8 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 {
 		int itercnt = 0;
 		bool match_found = true;
+		bool replacement_made;
+		bool restart_regex;
 		int match_cnt;
 		int offset;
 		int content_len;
@@ -78,6 +80,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 				return;
 			}
 			match_found = false;
+			restart_regex = false;
 
 			for (auto &type_regex : regexs) {
 				match_cnt = type_regex.second.matchAll(data, &matches);
@@ -85,6 +88,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 
 				if (match_cnt) {
 					match_found = true;
+					replacement_made = false;
 
 					for (auto match : matches) {
 						// See if there are any containers inside
@@ -92,6 +96,7 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 						for (auto &type_regex2 : regexs) {
 							if (type_regex2.second.match(match->at("content")->text)) {
 								parent_continue = true;
+								break;
 							}
 						}
 
@@ -117,8 +122,13 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 						}
 
 						markers[marker_id] = content;
+						replacement_made = true;
 					}
+
+					if (replacement_made) restart_regex = true;
 				}
+
+				if (restart_regex) break; // restart with the first regex
 			}
 		}
 
