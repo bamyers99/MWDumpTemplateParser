@@ -170,7 +170,17 @@ map<string, map<int, bool>> MainClass::blacklists = {{"enwiki" , {
 				{5823610, true},	// CountryAdjective
 				{146165, true},		// Artwork
 				{316780, true},		// Geograph
-				{58042, true}		// Nl
+				{58042, true},		// Nl
+				{19463099, true},	// Photograph
+				{297495, true},		// W
+				{6759487, true},	// Wayback
+				{40981760, true},	// Biohist
+				{41205348, true},	// Naturalis-link
+				{46556159, true},	// Nypl
+				{12814781, true},	// BIC
+				{8670111, true},	// Book
+				{518494, true},		// Retouched picture
+				{19583940, true}	// Original uploader
 	}}
 };
 
