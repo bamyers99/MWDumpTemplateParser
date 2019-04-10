@@ -27,7 +27,7 @@ public:
 	MWDumpHandler(IPageHandler& pageHandler) : pageHandler(pageHandler) {}
 	void startElement(void *userData, const char *el, const char **attr);
 	void endElement(void *userData, const char *el);
-	void characters(void *userData, const XML_Char *s, int len);
+	void characters(void *userData, const char *s, int len);
 	virtual ~MWDumpHandler() {};
 
 protected:

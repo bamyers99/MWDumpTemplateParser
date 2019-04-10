@@ -48,7 +48,7 @@ void MWDumpHandler::endElement(void *userData, const char *el)
 	element.clear();
 }
 
-void MWDumpHandler::characters(void *userData, const XML_Char *s, int len)
+void MWDumpHandler::characters(void *userData, const char *s, int len)
 {
 	if (container == "page") {
 		if (element == "ns") mwnamespace.append((char *)s, len);

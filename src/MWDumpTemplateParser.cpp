@@ -51,6 +51,7 @@ class TemplateInfo
 public:
 	int pagecount = 0;
 	int instancecount = 0;
+	string name;
 	map<string, int> param_name_cnt;
 	map<string, map<string, int>> param_value_cnt;
 	map<string, char> param_valid;
@@ -752,7 +753,7 @@ void XMLCALL endElement(void *userData, const char *el)
 	mwdh->endElement(userData, el);
 }
 
-void XMLCALL characters(void *userData, const XML_Char *s, int len)
+void XMLCALL characters(void *userData, const char *s, int len)
 {
 	mwdh->characters(userData, s, len);
 }
@@ -991,10 +992,15 @@ void MainClass::loadTemplateIds()
 			string name(pieces[0]);
 			int id = stoi(pieces[1]);
 			template_ids[name] = id;
-			if (template_info.find(id) == template_info.end()) template_info[id] = new TemplateInfo();
+			if (template_info.find(id) == template_info.end()) {
+				template_info[id] = new TemplateInfo();
+				template_info[id]->name = name; // set here incase no parameters
+			}
 
 			// Load the parameter names/validity
 			if (pieces.size() > 2) {
+				template_info[id]->name = name; // set to primary template
+
 				for (unsigned int i = 2; i < pieces.size(); i += 3) {
 					vector<string> aliases;
 					string_split(pieces[i], "|", &aliases);
@@ -1041,7 +1047,7 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
     	TemplateInfo* ti = info_pair.second;
     	if (ti->pagecount == 0) continue;
 
-    	*dest << "T" << info_pair.first << "\t" << ti->pagecount << "\t" << ti->instancecount << "\n";
+    	*dest << "T" << info_pair.first << "\t" << ti->pagecount << "\t" << ti->instancecount << "\t" << ti->name << "\n";
 
     	for (auto &param_pair : ti->param_name_cnt) {
     		const string& param_name = param_pair.first;
