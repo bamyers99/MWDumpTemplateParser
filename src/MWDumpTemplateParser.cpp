@@ -72,13 +72,13 @@ public:
 	map<string, int> template_ids;
     ostream *dest = 0;
     map<int, TemplateInfo *> template_info;
-    static map<string, map<int, bool>> blacklists;
-    map<int, bool> *blacklist;
+    static map<string, map<int, bool>> excludelists;
+    map<int, bool> *excludelist;
     static set<string> yesno;
     string wikiProject;
 };
 
-map<string, map<int, bool>> MainClass::blacklists = {{"enwiki" , {
+map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
     	{7585648, true},  // Reflist
 		{21067859, true}, // Italic title
 		{945764, true},   // Hatnote
@@ -653,7 +653,7 @@ int performTests()
 	}
 
 	/**
-	 * Misc test 2 - there should be no output because cite web is blacklisted
+	 * Misc test 2 - there should be no output because cite web is excludelisted
 	 */
 
 	pagedata = R"END(
@@ -808,7 +808,7 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     	wikiProject = totalsoutfilepath.substr(0, projectEnd);
     }
 
-    blacklist = &blacklists.find(wikiProject)->second;
+    excludelist = &excludelists.find(wikiProject)->second;
 
 	int bytes_read;
 	char *buff;
@@ -860,7 +860,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 	MWTemplateParamParser::getTemplates(&templates, page_data);
 	int tmplid;
 	map<int, int> pagetemplates;
-	bool blacklisted;
+	bool excludelisted;
 
 	for (auto &templ : templates) {
 		if (template_ids.find(templ.name) == template_ids.end()) continue;
@@ -884,34 +884,34 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		if (pagetemplates[tmplid] == 1) ++template_info[tmplid]->pagecount;
 		++template_info[tmplid]->instancecount;
 
-		blacklisted = (blacklist->find(tmplid) != blacklist->end());
-		bool writeblacklisted = false;
+		excludelisted = (excludelist->find(tmplid) != excludelist->end());
+		bool writeexcludelisted = false;
 
-		// Determine if blacklisted template needs to be written out: unknown/deprecated/required/suggested param
-		if (blacklisted) {
+		// Determine if excludelisted template needs to be written out: unknown/deprecated/required/suggested param
+		if (excludelisted) {
 			// unknown
 			for (auto &pair : templ_params) {
 				string key = pair.first;
 				if (template_info[tmplid]->param_valid.find(key) == template_info[tmplid]->param_valid.end()) {
-					writeblacklisted = true;
+					writeexcludelisted = true;
 					break;
 				}
 			}
 
 			// deprecated/required/suggested
-			if (! writeblacklisted) {
+			if (! writeexcludelisted) {
 				for (auto &pair : template_info[tmplid]->param_valid) {
 					string key = pair.first;
 					char value = pair.second;
 
 					if (value == 'D' && templ_params.find(key) != templ_params.end()) {
-						writeblacklisted = true;
+						writeexcludelisted = true;
 						break;
 					}
 
 					// Don't check suggested because generates too many, ie. Cite book
 					if (value == 'R' && templ_params.find(key) == templ_params.end()) {
-						writeblacklisted = true;
+						writeexcludelisted = true;
 						break;
 					}
 				}
@@ -946,7 +946,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			if (writevaliderror) break;
 		}
 
-		if (! blacklisted || writeblacklisted || writevaliderror) *dest << tmplid << "\t" << page_id;
+		if (! excludelisted || writeexcludelisted || writevaliderror) *dest << tmplid << "\t" << page_id;
 
 		for (auto &pair : templ_params) {
 			string key = pair.first;
@@ -960,15 +960,15 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			++template_info[tmplid]->param_name_cnt[key];
 
 			if (template_info[tmplid]->param_value_cnt[key].size() == 50 && ! writevaliderror) {
-				if (! blacklisted || writeblacklisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
+				if (! excludelisted || writeexcludelisted) *dest << "\t" << key << "\t"; // Don't write the value out, need key for templates having 'key' searches
 			} else {
 				if (template_info[tmplid]->param_value_cnt[key].size() < 50) ++template_info[tmplid]->param_value_cnt[key][value];
-				if (! blacklisted || writevaliderror) *dest << "\t" << key << "\t" << value;
-				else if (writeblacklisted) *dest << "\t" << key << "\t";
+				if (! excludelisted || writevaliderror) *dest << "\t" << key << "\t" << value;
+				else if (writeexcludelisted) *dest << "\t" << key << "\t";
 			}
 		}
 
-		if (! blacklisted || writeblacklisted || writevaliderror) *dest << "\n";
+		if (! excludelisted || writeexcludelisted || writevaliderror) *dest << "\n";
 	}
 }
 
@@ -1069,7 +1069,7 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
 
 int calcOffsets(string infilepath, string outfilepath)
 {
-	bool blacklisted;
+	bool excludelisted;
     istream *source;
     if (infilepath == "-") {
     	source = &cin;
@@ -1102,7 +1102,7 @@ int calcOffsets(string infilepath, string outfilepath)
     	wikiProject = infilepath.substr(0, projectEnd);
     }
 
-    map<int, bool> *blacklist = &MainClass::blacklists.find(wikiProject)->second;
+    map<int, bool> *excludelist = &MainClass::excludelists.find(wikiProject)->second;
 
     string prevTemplID;
 	string line;
@@ -1119,9 +1119,9 @@ int calcOffsets(string infilepath, string outfilepath)
 
 			if (templID != prevTemplID) {
 				int tmplid = atoi(templID.c_str());
-				blacklisted = (blacklist->find(tmplid) != blacklist->end());
+				excludelisted = (excludelist->find(tmplid) != excludelist->end());
 				string blsign;
-				if (blacklisted) blsign = "-";
+				if (excludelisted) blsign = "-";
 
 				*dest << templID << "\t" << blsign << offset << "\n";
 			}
