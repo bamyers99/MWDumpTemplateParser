@@ -190,7 +190,51 @@ map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
 		{15719578, true}, // Track listing
 		{1169824, true},  // Infobox album
 		{3529988, true},  // Infobox film
-		{942370, true}    // IMDb name
+		{942370, true},   // IMDb name
+		{9346293, true},  // Ct
+		{3049117, true},  // S-bef
+		{3049127, true},  // S-aft
+		{1808502, true},  // For
+		{3608182, true},  // Ushr
+		{1440745, true},  // Unreferenced
+		{2236346, true},  // Anchor
+		{994397, true},   // Blockquote
+		{24429562, true}, // R
+		{8488620, true},  // Non-free use rationale
+		{2095006, true},  // Copy to Wikimedia Commons
+		{12679552, true}, // Div col
+		{17372666, true}, // Election box candidate with party link no change
+		{31445471, true}, // Use Indian English
+		{15055685, true}, // MLBplayer
+		{3887598, true},  // MedalGold
+		{2884643, true},  // Information
+		{21658792, true}, // Post-nominals
+		{5347876, true},  // Height
+		{31492748, true}, // Use Australian English
+		{16011254, true}, // As of
+		{24383721, true}, // Lang-zh
+		{10409927, true}, // Multiple issues
+		{10353133, true}, // Stnlnk
+		{17769239, true}, // Math
+		{19375848, true}, // Coord missing
+		{8368968, true},  // Cr
+		{12389422, true}, // London Gazette
+		{15495403, true}, // Start date and age
+		{4592538, true},  // Infobox musical artist
+		{4821205, true},  // Cite press release
+		{1272240, true},  // AllMusic
+		{28512348, true}, // EngvarB
+		{12550992, true}, // End date
+		{3887603, true},  // MedalSilver
+		{1437507, true},  // Lang-ru
+		{3887607, true},  // MedalBronze
+		{26246329, true}, // Refn
+		{7256413, true},  // Orphan
+		{11665973, true}, // Fbu
+		{30675152, true}, // Portal bar
+		{25259254, true}, // Album ratings
+		{11847582, true}, // BLP sources
+		{1664277, true}   // Cite encyclopedia
     }},
 		{"commonswiki", {
 				{7918118, true},	// ISOyear
