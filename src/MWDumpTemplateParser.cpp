@@ -135,7 +135,62 @@ map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
 		{3029961, true},  // Football squad player
 		{1406921, true},  // Infobox settlement
 		{3382507, true},  // Infobox person
-		{21044097, true}  // Use dmy dates
+		{21044097, true}, // Use dmy dates
+		{55686718, true}, // Short description
+		{2385304, true},  // Small
+		{8577339, true},  // Date table sorting
+		{51604275, true}, // ISBN
+		{12549672, true}, // Start date
+		{22577742, true}, // Webarchive
+		{9974237, true},  // Flagathlete
+		{6658694, true},  // Birth date and age
+		{1430094, true},  // Lang
+		{1208356, true},  // Main
+		{4320511, true},  // Yel
+		{28514058, true}, // Football squad player2
+		{1627975, true},  // Nowrap
+		{1794721, true},  // Election box candidate with party link
+		{1718071, true},  // Flagcountry
+		{49381105, true}, // Taxonbar
+		{9172159, true},  // Dead link
+		{34043836, true}, // Efn
+		{1787606, true},  // Tooltip
+		{10160967, true}, // More citations needed
+		{8623434, true},  // Death date and age
+		{9307136, true},  // Number table sorting
+		{1275099, true},  // Commons category
+		{6594285, true},  // Birth date
+		{9613988, true},  // Fb
+		{1780010, true},  // Portal
+		{811789, true},   // URL
+		{2557713, true},  // Abbr
+		{10108308, true}, // Rp
+		{7559370, true},  // Cite magazine
+		{12370209, true}, // Birth date and age2
+		{33825240, true}, // Plainlist
+		{20999385, true}, // Use mdy dates
+		{40851451, true}, // Interlanguage link
+		{7233408, true},  // Official website
+		{1721254, true},  // See also
+		{27566674, true}, // Use British English
+		{1346385, true},  // IPA
+		{10625749, true}, // Color box
+		{10268880, true}, // Rating
+		{30713040, true}, // Speciesbox
+		{1794703, true},  // Election box begin
+		{3049121, true},  // S-ttl
+		{10102605, true}, // Number table sorting hidden
+		{4816819, true},  // Succession box
+		{41732321, true}, // Infobox football biography
+		{828359, true},   // Center
+		{44223495, true}, // Cvt
+		{34573847, true}, // Non-free use rationale 2
+		{942373, true},   // IMDb title
+		{1432586, true},  // Infobox officeholder
+		{15719578, true}, // Track listing
+		{1169824, true},  // Infobox album
+		{3529988, true},  // Infobox film
+		{942370, true}    // IMDb name
     }},
 		{"commonswiki", {
 				{7918118, true},	// ISOyear
