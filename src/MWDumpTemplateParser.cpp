@@ -234,7 +234,23 @@ map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
 		{30675152, true}, // Portal bar
 		{25259254, true}, // Album ratings
 		{11847582, true}, // BLP sources
-		{1664277, true}   // Cite encyclopedia
+		{1664277, true},  // Cite encyclopedia
+    	{44066567, true}, // Flatlist
+		{19259373, true}, // Infobox sportsperson
+		{2530840, true},  // Ship
+		{16592146, true}, // Val
+		{3298325, true},  // Legend
+		{2499787, true},  // N/a
+		{44554794, true}, // STN
+		{8221998, true},  // Commons category-inline
+		{3406012, true},  // Distinguish
+		{2966417, true},  // Lang-fa
+		{1818440, true},  // Yes
+    	{1721317, true},  // Further
+		{19654866, true}, // Empty section
+    	{4082450, true},  // Navy
+    	{825724, true},   // Sup
+    	{2418584, true}   // Infobox song
     }},
 		{"commonswiki", {
 				{7918118, true},	// ISOyear
