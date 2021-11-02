@@ -250,7 +250,22 @@ map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
 		{19654866, true}, // Empty section
     	{4082450, true},  // Navy
     	{825724, true},   // Sup
-    	{2418584, true}   // Infobox song
+    	{2418584, true},  // Infobox song
+		{27486458, true}, // Unbulleted list
+		{31779025, true}, // National Heritage List for England
+		{10661272, true}, // Transl
+		{45336740, true}, // Composition bar
+		{34978013, true}, // Font
+		{3276409, true},  // Fraction
+		{3887594, true},  // MedalSport
+		{5579775, true},  // YouTube
+		{4844043, true},  // Age
+		{17977116, true}, // Cite report
+		{29483488, true}, // NRISref
+		{11967822, true}, // Sclass
+		{38001423, true}, // Soccerway
+		{2634656, true},  // Human name disambiguation
+		{3389303, true}   // Notability
     }},
 		{"commonswiki", {
 				{7918118, true},	// ISOyear
