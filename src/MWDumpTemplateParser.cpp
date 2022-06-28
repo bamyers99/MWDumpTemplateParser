@@ -36,6 +36,8 @@ using namespace phppreg;
 int performTests();
 int calcOffsets(string infilepath, string outfilepath);
 int dumpValues(string infilepath, string outfilepath, string templatenames, bool verbose);
+map<int, bool> excludelist;
+void loadExclusions(const string& wikiProject);
 
 /**
  * Sample usage:
@@ -72,247 +74,8 @@ public:
 	map<string, int> template_ids;
     ostream *dest = 0;
     map<int, TemplateInfo *> template_info;
-    static map<string, map<int, bool>> excludelists;
-    map<int, bool> *excludelist;
     static set<string> yesno;
     string wikiProject;
-};
-
-map<string, map<int, bool>> MainClass::excludelists = {{"enwiki" , {
-    	{7585648, true},  // Reflist
-		{21067859, true}, // Italic title
-		{945764, true},   // Hatnote
-		{1239772, true},  // Clear
-		{3218295, true},  // Col-begin
-		{3218301, true},  // Col-end
-    	{4148498, true},  // Cite web
-    	{1252907, true},  // Cite web (from merge)
-		{4321630, true},  // Cite news
-		{4086375, true},  // Cite book
-		{8387047, true},  // Convert
-		{3501055, true},  // Persondata
-		{4740319, true},  // Cite journal
-		{10118245, true}, // Coord
-		{23092408, true}, // Sfn
-		{3164016, true},  // Citation
-		{8577339, true},  // Dts
-		{689990, true},   // Taxobox
-		{2868018, true},  // Nihongo
-		{5326834, true},  // Harvard citation no brackets
-		{22612844, true}, // Football box collapsible
-		{5098428, true},  // Episode list
-		{9731674, true},  // Jct
-		{6075367, true},  // FlagIOCathlete
-		{10314667, true}, // Sortname
-		{23470924, true}, // FlagIOC2athlete
-		{11850048, true}, // Location map~
-		{11849914, true}, // Location map+
-		{30759408, true}, // NRHP row
-		{1794726, true},  // Election box turnout
-		{10109193, true}, // CBB schedule entry
-		{3544598, true},  // Football box
-		{2468023, true},  // About
-		{8579816, true},  // CFB Schedule Entry
-		{6664883, true},  // Goal
-		{24576447, true}, // Singlechart
-		{1794728, true},  // Election box majority
-		{34231814, true}, // Canadian election result
-		{7127202, true},  // USS
-		{19963792, true}, // Episode list/sublist
-		{10840750, true}, // HMS
-		{11359357, true}, // Extended football squad player
-		{3969498, true},  // National football squad player
-		{24724613, true}, // IPAc-pl
-		{7486256, true},  // Infobox NRHP
-		{1807946, true},  // Election box hold with party link
-		{41251413, true}, // Vcite2 journal
-		{12077928, true}, // Fb cl team
-		{20030541, true}, // Fb cl2 team
-		{2075417, true},  // Flagicon
-		{1695548, true},  // Flag
-		{2048472, true},  // Citation needed
-		{134352, true},   // Infobox football biography
-		{3029961, true},  // Football squad player
-		{1406921, true},  // Infobox settlement
-		{3382507, true},  // Infobox person
-		{21044097, true}, // Use dmy dates
-		{55686718, true}, // Short description
-		{2385304, true},  // Small
-		{8577339, true},  // Date table sorting
-		{51604275, true}, // ISBN
-		{12549672, true}, // Start date
-		{22577742, true}, // Webarchive
-		{9974237, true},  // Flagathlete
-		{6658694, true},  // Birth date and age
-		{1430094, true},  // Lang
-		{1208356, true},  // Main
-		{4320511, true},  // Yel
-		{28514058, true}, // Football squad player2
-		{1627975, true},  // Nowrap
-		{1794721, true},  // Election box candidate with party link
-		{1718071, true},  // Flagcountry
-		{49381105, true}, // Taxonbar
-		{9172159, true},  // Dead link
-		{34043836, true}, // Efn
-		{1787606, true},  // Tooltip
-		{10160967, true}, // More citations needed
-		{8623434, true},  // Death date and age
-		{9307136, true},  // Number table sorting
-		{1275099, true},  // Commons category
-		{6594285, true},  // Birth date
-		{9613988, true},  // Fb
-		{1780010, true},  // Portal
-		{811789, true},   // URL
-		{2557713, true},  // Abbr
-		{10108308, true}, // Rp
-		{7559370, true},  // Cite magazine
-		{12370209, true}, // Birth date and age2
-		{33825240, true}, // Plainlist
-		{20999385, true}, // Use mdy dates
-		{40851451, true}, // Interlanguage link
-		{7233408, true},  // Official website
-		{1721254, true},  // See also
-		{27566674, true}, // Use British English
-		{1346385, true},  // IPA
-		{10625749, true}, // Color box
-		{10268880, true}, // Rating
-		{30713040, true}, // Speciesbox
-		{1794703, true},  // Election box begin
-		{3049121, true},  // S-ttl
-		{10102605, true}, // Number table sorting hidden
-		{4816819, true},  // Succession box
-		{41732321, true}, // Infobox football biography
-		{828359, true},   // Center
-		{44223495, true}, // Cvt
-		{34573847, true}, // Non-free use rationale 2
-		{942373, true},   // IMDb title
-		{1432586, true},  // Infobox officeholder
-		{15719578, true}, // Track listing
-		{1169824, true},  // Infobox album
-		{3529988, true},  // Infobox film
-		{942370, true},   // IMDb name
-		{9346293, true},  // Ct
-		{3049117, true},  // S-bef
-		{3049127, true},  // S-aft
-		{1808502, true},  // For
-		{3608182, true},  // Ushr
-		{1440745, true},  // Unreferenced
-		{2236346, true},  // Anchor
-		{994397, true},   // Blockquote
-		{24429562, true}, // R
-		{8488620, true},  // Non-free use rationale
-		{2095006, true},  // Copy to Wikimedia Commons
-		{12679552, true}, // Div col
-		{17372666, true}, // Election box candidate with party link no change
-		{31445471, true}, // Use Indian English
-		{15055685, true}, // MLBplayer
-		{3887598, true},  // MedalGold
-		{2884643, true},  // Information
-		{21658792, true}, // Post-nominals
-		{5347876, true},  // Height
-		{31492748, true}, // Use Australian English
-		{16011254, true}, // As of
-		{24383721, true}, // Lang-zh
-		{10409927, true}, // Multiple issues
-		{10353133, true}, // Stnlnk
-		{17769239, true}, // Math
-		{19375848, true}, // Coord missing
-		{8368968, true},  // Cr
-		{12389422, true}, // London Gazette
-		{15495403, true}, // Start date and age
-		{4592538, true},  // Infobox musical artist
-		{4821205, true},  // Cite press release
-		{1272240, true},  // AllMusic
-		{28512348, true}, // EngvarB
-		{12550992, true}, // End date
-		{3887603, true},  // MedalSilver
-		{1437507, true},  // Lang-ru
-		{3887607, true},  // MedalBronze
-		{26246329, true}, // Refn
-		{7256413, true},  // Orphan
-		{11665973, true}, // Fbu
-		{30675152, true}, // Portal bar
-		{25259254, true}, // Album ratings
-		{11847582, true}, // BLP sources
-		{1664277, true},  // Cite encyclopedia
-    	{44066567, true}, // Flatlist
-		{19259373, true}, // Infobox sportsperson
-		{2530840, true},  // Ship
-		{16592146, true}, // Val
-		{3298325, true},  // Legend
-		{2499787, true},  // N/a
-		{44554794, true}, // STN
-		{8221998, true},  // Commons category-inline
-		{3406012, true},  // Distinguish
-		{2966417, true},  // Lang-fa
-		{1818440, true},  // Yes
-    	{1721317, true},  // Further
-		{19654866, true}, // Empty section
-    	{4082450, true},  // Navy
-    	{825724, true},   // Sup
-    	{2418584, true},  // Infobox song
-		{27486458, true}, // Unbulleted list
-		{31779025, true}, // National Heritage List for England
-		{10661272, true}, // Transl
-		{45336740, true}, // Composition bar
-		{34978013, true}, // Font
-		{3276409, true},  // Fraction
-		{3887594, true},  // MedalSport
-		{5579775, true},  // YouTube
-		{4844043, true},  // Age
-		{17977116, true}, // Cite report
-		{29483488, true}, // NRISref
-		{11967822, true}, // Sclass
-		{38001423, true}, // Soccerway
-		{2634656, true},  // Human name disambiguation
-		{3389303, true}   // Notability
-    }},
-		{"commonswiki", {
-				{7918118, true},	// ISOyear
-				{5787005, true},	// ISOdate
-				{18318095, true},	// Years since
-				{576289, true},		// Information
-				{611438, true},		// Lang
-				{163449, true},		// Description
-				{6296689, true},	// LangSwitch
-				{55980, true},		// En
-				{171728, true},		// Self
-				{725700, true},		// Location
-				{1706714, true},	// Cc-by-sa-3.0
-				{29871557, true},	// Cc-by-sa-4.0
-				{12369975, true},	// Smartlink
-				{163537, true},		// De
-				{28, true},			// GFDL
-				{9952, true},		// Cc-by-sa-2.0
-				{1017819, true},	// U
-				{63642011, true},	// FlickreviewR
-				{9951, true},		// Cc-by-2.0
-				{7554927, true},	// City
-				{3288338, true},	// Object location
-				{1706773, true},	// Cc-by-3.0
-				{163138, true},		// Fr
-				{4037295, true},	// Cc-zero
-				{6397443, true},	// Other date
-				{11207720, true},	// Institution
-				{7671128, true},	// Panoramioreview
-				{7312082, true},	// Taken on
-				{5823435, true},	// Occupation
-				{9019858, true},	// Nationality
-				{5823610, true},	// CountryAdjective
-				{146165, true},		// Artwork
-				{316780, true},		// Geograph
-				{58042, true},		// Nl
-				{19463099, true},	// Photograph
-				{297495, true},		// W
-				{6759487, true},	// Wayback
-				{40981760, true},	// Biohist
-				{41205348, true},	// Naturalis-link
-				{46556159, true},	// Nypl
-				{12814781, true},	// BIC
-				{8670111, true},	// Book
-				{518494, true},		// Retouched picture
-				{19583940, true}	// Original uploader
-	}}
 };
 
 set<string> MainClass::yesno = {
@@ -938,7 +701,7 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     	wikiProject = totalsoutfilepath.substr(0, projectEnd);
     }
 
-    excludelist = &excludelists.find(wikiProject)->second;
+    loadExclusions(wikiProject);
 
 	int bytes_read;
 	char *buff;
@@ -1014,7 +777,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		if (pagetemplates[tmplid] == 1) ++template_info[tmplid]->pagecount;
 		++template_info[tmplid]->instancecount;
 
-		excludelisted = (excludelist->find(tmplid) != excludelist->end());
+		excludelisted = (excludelist.find(tmplid) != excludelist.end());
 		bool writeexcludelisted = false;
 
 		// Determine if excludelisted template needs to be written out: unknown/deprecated/required/suggested param
@@ -1161,6 +924,38 @@ void MainClass::loadTemplateIds()
 	}
 }
 
+void loadExclusions(const string& wikiProject)
+{
+	string infilepath = "ExcludeTemplates.tsv";
+	ifstream source(infilepath.c_str(), ios::in|ios::binary);
+	if (source.fail()) {
+	    cerr << "new ifstream failed for " << infilepath << "\n";
+	    return;
+	}
+
+	string line;
+	vector<string> pieces;
+	bool projectFound = false;
+
+	while (source.good()) {
+		getline(source, line);
+
+		if (line.length()) {
+			string_split(line, "\t", &pieces);
+
+			if (! isdigit(pieces[0][0])) {
+				projectFound = false;
+				if (pieces[0] == wikiProject) projectFound = true;
+			} else {
+				if (projectFound) {
+					int id = stoi(pieces[0]);
+					excludelist[id] = true;
+				}
+			}
+		}
+	}
+}
+
 void MainClass::writeTotals(const string& totalsoutfilepath)
 {
     ostream *dest;
@@ -1232,7 +1027,7 @@ int calcOffsets(string infilepath, string outfilepath)
     	wikiProject = infilepath.substr(0, projectEnd);
     }
 
-    map<int, bool> *excludelist = &MainClass::excludelists.find(wikiProject)->second;
+    loadExclusions(wikiProject);
 
     string prevTemplID;
 	string line;
@@ -1249,7 +1044,7 @@ int calcOffsets(string infilepath, string outfilepath)
 
 			if (templID != prevTemplID) {
 				int tmplid = atoi(templID.c_str());
-				excludelisted = (excludelist->find(tmplid) != excludelist->end());
+				excludelisted = (excludelist.find(tmplid) != excludelist.end());
 				string blsign;
 				if (excludelisted) blsign = "-";
 
