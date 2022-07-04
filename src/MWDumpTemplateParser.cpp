@@ -979,11 +979,9 @@ void MainClass::writeTotals(const string& totalsoutfilepath)
 
     		*dest << "P" << param_name << "\t" << param_pair.second;
 
-    		if (ti->param_value_cnt[param_name].size() != 50) {
-    			for (auto &value_pair : ti->param_value_cnt[param_name]) {
-    				*dest << "\t" << value_pair.first << "\t" << value_pair.second;
-    			}
-    		}
+			for (auto &value_pair : ti->param_value_cnt[param_name]) {
+				*dest << "\t" << value_pair.first << "\t" << value_pair.second;
+			}
 
         	*dest << "\n";
     	}
