@@ -38,6 +38,8 @@ int calcOffsets(string infilepath, string outfilepath);
 int dumpValues(string infilepath, string outfilepath, string templatenames, bool verbose);
 map<int, bool> excludelist;
 void loadExclusions(const string& wikiProject);
+map<int, bool> namespaces;
+void loadNamespaces(const string& wikiProject);
 
 /**
  * Sample usage:
@@ -702,6 +704,7 @@ int MainClass::parseTemplates(const string& infilepath, const string& outfilepat
     }
 
     loadExclusions(wikiProject);
+    loadNamespaces(wikiProject);
 
 	int bytes_read;
 	char *buff;
@@ -744,7 +747,8 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 {
 	static int pagecnt = 0;
 
-	if (ns != 0 && ns != 6) return; // only want articles and files
+	if (namespaces.find(ns) == namespaces.end()) return;
+
 	++pagecnt;
 	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
 
@@ -924,6 +928,10 @@ void MainClass::loadTemplateIds()
 	}
 }
 
+/**
+ * Load templates to exclude from loading all parameter data.
+ * @param string wikiProject
+ */
 void loadExclusions(const string& wikiProject)
 {
 	string infilepath = "ExcludeTemplates.tsv";
@@ -950,6 +958,42 @@ void loadExclusions(const string& wikiProject)
 				if (projectFound) {
 					int id = stoi(pieces[0]);
 					excludelist[id] = true;
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Load namespaces to scan.
+ * @param string wikiProject
+ */
+void loadNamespaces(const string& wikiProject)
+{
+	string infilepath = "Namespaces.tsv";
+	ifstream source(infilepath.c_str(), ios::in|ios::binary);
+	if (source.fail()) {
+	    cerr << "new ifstream failed for " << infilepath << "\n";
+	    return;
+	}
+
+	string line;
+	vector<string> pieces;
+	bool projectFound = false;
+
+	while (source.good()) {
+		getline(source, line);
+
+		if (line.length()) {
+			string_split(line, "\t", &pieces);
+
+			if (! isdigit(pieces[0][0])) {
+				projectFound = false;
+				if (pieces[0] == wikiProject) projectFound = true;
+			} else {
+				if (projectFound) {
+					int id = stoi(pieces[0]);
+					namespaces[id] = true;
 				}
 			}
 		}
