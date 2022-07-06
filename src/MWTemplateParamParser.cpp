@@ -164,10 +164,17 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 						param_name = name_value[0];
 						param_value = name_value[1];
 
-						// Replace any markers in the name
-						MARKER_REGEX.matchAll(param_name, &marker_matches);
-						for (auto &marker_match : marker_matches) {
-							string_replace(&param_name, marker_match->at(0)->text, markers[marker_match->at(0)->text]);
+						if (param_name.length() && param_name.back() == '\n') { // = must be on same line as param name
+							param_name = to_string(numbered_param);
+							param_value = param;
+							++numbered_param;
+
+						} else {
+							// Replace any markers in the name
+							MARKER_REGEX.matchAll(param_name, &marker_matches);
+							for (auto &marker_match : marker_matches) {
+								string_replace(&param_name, marker_match->at(0)->text, markers[marker_match->at(0)->text]);
+							}
 						}
 					} else {
 						param_name = to_string(numbered_param);
