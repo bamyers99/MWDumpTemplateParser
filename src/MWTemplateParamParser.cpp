@@ -27,10 +27,19 @@ namespace phppreg {
 map<string, PhpPreg> MWTemplateParamParser::regexs = {
 		{"passed_param" , PhpPreg("!\\{\\{\\{(?P<content>[^{}]*?\\}\\}\\})!")}, // Highest priority
 		{"htmlstub" , PhpPreg("!<\\s*(?P<content>[\\w]+(?:(?:\\s+\\w+(?:\\s*=\\s*(?:\"[^\"]*+\"|'[^']*+'|[^'\">\\s]+))?)+\\s*|\\s*)/>)!")},
-		{"html" , PhpPreg("!<\\s*(?P<content>(?P<tag>[\\w]+)[^>]*>[^<]*?<\\s*/\\s*(?P=tag)\\s*>)!")},
+		{"html" , PhpPreg("!<\\s*(?P<tag>[\\w]+)[^>]*>(?P<content>.*?<\\s*/\\s*(?P=tag)\\s*>)!s")},
 		{"template" , PhpPreg("!\\{\\{\\s*(?P<content>(?P<name>[^{}\\|]+?)(?:\\|(?P<params>[^{}]+?))?\\}\\})!")},
 		{"table" , PhpPreg("!\\{\\|(?P<content>[^{]*?\\|\\})!")},
 		{"link" , PhpPreg("/\\[\\[(?P<content>(?:.(?!\\[\\[))+?\\]\\])/s")}
+};
+
+vector<string> MWTemplateParamParser::regexs_ordered = {
+		"passed_param",
+		"htmlstub",
+		"html",
+		"template",
+		"table",
+		"link"
 };
 
 const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
@@ -50,16 +59,8 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 {
 		int itercnt = 0;
 		bool match_found = true;
-		bool replacement_made;
-		bool restart_regex;
-		int match_cnt;
-		int offset;
-		int content_len;
-		int offset_adjust;
 		map<string, string> markers;
-		string marker_id;
 		vector<string> templates;
-		vector<shared_ptr<MatchVector>> matches;
 		vector<shared_ptr<MatchVector>> marker_matches;
 		MatchVector match;
 		string tmpl_name;
@@ -79,57 +80,8 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 			if (++itercnt > MAX_ITERATIONS) {
 				return;
 			}
-			match_found = false;
-			restart_regex = false;
 
-			for (auto &type_regex : regexs) {
-				match_cnt = type_regex.second.matchAll(data, &matches);
-				offset_adjust = 0;
-
-				if (match_cnt) {
-					match_found = true;
-					replacement_made = false;
-
-					for (auto match : matches) {
-						// See if there are any containers inside
-						bool parent_continue = false;
-						for (auto &type_regex2 : regexs) {
-							if (type_regex2.second.match(match->at("content")->text)) {
-								parent_continue = true;
-								break;
-							}
-						}
-
-						if (parent_continue) continue;
-
-						// Replace the match with a marker
-						ostringstream oss;
-						oss << "\x02" << markers.size() << "\x03";
-						marker_id = oss.str();
-						string content = match->at(0)->text;
-						content_len = content.length();
-						offset = match->at(0)->textOffset - offset_adjust;
-						offset_adjust += content_len - marker_id.length();
-
-						data.replace(offset, content_len, marker_id);
-
-						if (type_regex.first == "template") templates.push_back(content);
-
-						// Replace any markers in the content
-						MARKER_REGEX.matchAll(content, &marker_matches);
-						for (auto &marker_match : marker_matches) {
-							string_replace(&content, marker_match->at(0)->text, markers[marker_match->at(0)->text]);
-						}
-
-						markers[marker_id] = content;
-						replacement_made = true;
-					}
-
-					if (replacement_made) restart_regex = true;
-				}
-
-				if (restart_regex) break; // restart with the first regex
-			}
+			match_found = _getTemplates(&data, &markers, &templates, 0, data.length());
 		}
 
 		// Parse the template names and parameters
@@ -197,5 +149,62 @@ void MWTemplateParamParser::getTemplates(vector<MWTemplate> *results, const stri
 			results->emplace_back(tmpl_name, tmpl_params);
 		}
 }
+
+bool MWTemplateParamParser::_getTemplates(string *data, map<string, string> *markers, vector<string> *templates, int start, int length)
+{
+	int match_cnt;
+	int offset_adjust;
+	vector<shared_ptr<MatchVector>> matches;
+	string marker_id;
+	int content_len;
+	int offset;
+	vector<shared_ptr<MatchVector>> marker_matches;
+	bool match_found;
+	string substrdata;
+
+	substrdata = data->substr(start, length);
+
+	for (auto &regexname : regexs_ordered) {
+		PhpPreg& type_regex = regexs[regexname];
+		match_cnt = type_regex.matchAll(substrdata, &matches);
+		offset_adjust = 0;
+
+		if (match_cnt) {
+
+			for (auto match : matches) {
+				// See if there are any containers inside
+				match_found = _getTemplates(data, markers, templates, start + match->at("content")->textOffset - offset_adjust,
+					match->at("content")->text.length());
+                if (match_found) return true; // Restart because data changed
+
+				// Replace the match with a marker
+				ostringstream oss;
+				oss << "\x02" << markers->size() << "\x03";
+				marker_id = oss.str();
+				string content = match->at(0)->text;
+				content_len = content.length();
+				offset = start + match->at(0)->textOffset - offset_adjust;
+				offset_adjust += content_len - marker_id.length();
+
+				data->replace(offset, content_len, marker_id);
+
+				if (regexname == "template") templates->push_back(content);
+
+				// Replace any markers in the content
+				MARKER_REGEX.matchAll(content, &marker_matches);
+				for (auto &marker_match : marker_matches) {
+					string_replace(&content, marker_match->at(0)->text, (*markers)[marker_match->at(0)->text]);
+				}
+
+				(*markers)[marker_id] = content;
+			}
+
+			return true; // Restart because data changed
+		}
+	}
+
+    return false;
+}
+
 
 } /* namespace phppreg */

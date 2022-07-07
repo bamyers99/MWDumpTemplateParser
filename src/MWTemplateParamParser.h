@@ -33,11 +33,15 @@ public:
 	virtual ~MWTemplateParamParser() {}
 
 	static std::map<std::string, PhpPreg> regexs;
+	static std::vector<std::string> regexs_ordered;
 	const static int MAX_ITERATIONS;
 	static PhpPreg COMMENT_REGEX;
 	static PhpPreg MARKER_REGEX;
 	static PhpPreg NOWIKI_REGEX;
 	static PhpPreg BR_REGEX;
+
+protected:
+	static bool _getTemplates(std::string *data, std::map<std::string, std::string> *markers, std::vector<std::string> *templates, int start, int length);
 };
 
 } /* namespace phppreg */
