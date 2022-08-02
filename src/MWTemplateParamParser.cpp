@@ -42,7 +42,7 @@ vector<string> MWTemplateParamParser::regexs_ordered = {
 		"link"
 };
 
-const int MWTemplateParamParser::MAX_ITERATIONS = 100000;
+const int MWTemplateParamParser::MAX_ITERATIONS = 1000;
 PhpPreg MWTemplateParamParser::COMMENT_REGEX("/<!--.*?-->/us");
 PhpPreg MWTemplateParamParser::MARKER_REGEX("!\\x02\\d+\\x03!");
 PhpPreg MWTemplateParamParser::NOWIKI_REGEX("!<\\s*nowiki\\s*>.*?<\\s*/nowiki\\s*>!usi");
