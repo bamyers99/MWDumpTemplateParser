@@ -55,6 +55,7 @@ class TemplateInfo
 public:
 	int pagecount = 0;
 	int instancecount = 0;
+	int validationerrcount = 0;
 	string name;
 	map<string, int> param_name_cnt;
 	map<string, map<string, int>> param_value_cnt;
@@ -784,7 +785,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 		excludelisted = (excludelist.find(tmplid) != excludelist.end());
 		bool writeexcludelisted = false;
 
-		// Determine if excludelisted template needs to be written out: unknown/deprecated/required/suggested param
+		// Determine if excludelisted template needs to be written out: unknown/deprecated/required param
 		if (excludelisted) {
 			// unknown
 			for (auto &pair : templ_params) {
@@ -795,7 +796,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 				}
 			}
 
-			// deprecated/required/suggested
+			// deprecated/required
 			if (! writeexcludelisted) {
 				for (auto &pair : template_info[tmplid]->param_valid) {
 					string key = pair.first;
@@ -841,6 +842,11 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 			}
 
 			if (writevaliderror) break;
+		}
+
+		if (writevaliderror) {
+			if (template_info[tmplid]->validationerrcount > 10000) writevaliderror = false;
+			else ++template_info[tmplid]->validationerrcount;
 		}
 
 		if (! excludelisted || writeexcludelisted || writevaliderror) *dest << tmplid << "\t" << page_id;
