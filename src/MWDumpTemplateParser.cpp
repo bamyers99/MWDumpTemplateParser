@@ -749,6 +749,7 @@ void MainClass::processPage(int ns, unsigned int page_id, unsigned int revid, co
 	static int pagecnt = 0;
 
 	if (namespaces.find(ns) == namespaces.end()) return;
+	if (page_title.find("/Archive") != std::string::npos) return;
 
 	++pagecnt;
 	if (pagecnt % 100000 == 0 && verbose) cerr << pagecnt << "\n";
